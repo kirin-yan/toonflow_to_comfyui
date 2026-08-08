@@ -1,0 +1,391 @@
+{
+  "60": {
+    "inputs": {
+      "filename_prefix": "{{filenamePrefix}}",
+      "images": [
+        "433:8",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "保存图像"
+    }
+  },
+  "78": {
+    "inputs": {
+      "image": "{{image1}}"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "加载图像"
+    }
+  },
+  "435": {
+    "inputs": {
+      "value": "{{styledPrompt}}"
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "Prompt"
+    }
+  },
+  "469": {
+    "inputs": {
+      "image": "{{image2}}"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "加载图像"
+    }
+  },
+  "470": {
+    "inputs": {
+      "image": "{{image3}}"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image 3"
+    }
+  },
+  "433:75": {
+    "inputs": {
+      "strength": 1,
+      "model": [
+        "433:66",
+        0
+      ]
+    },
+    "class_type": "CFGNorm",
+    "_meta": {
+      "title": "CFG归一化"
+    }
+  },
+  "433:39": {
+    "inputs": {
+      "vae_name": "qwen_image_vae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "加载VAE"
+    }
+  },
+  "433:38": {
+    "inputs": {
+      "clip_name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+      "type": "qwen_image",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "加载CLIP"
+    }
+  },
+  "433:37": {
+    "inputs": {
+      "unet_name": "Qwen-Image-Lightning-4steps-V1.0-fp8-e4m3.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "UNet加载器"
+    }
+  },
+  "433:110": {
+    "inputs": {
+      "prompt": "{{animeNegativePrompt}}",
+      "clip": [
+        "433:38",
+        0
+      ],
+      "vae": [
+        "433:39",
+        0
+      ],
+      "image1": [
+        "433:117",
+        0
+      ],
+      "image2": [
+        "433:118",
+        0
+      ],
+      "image3": [
+        "433:119",
+        0
+      ]
+    },
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "_meta": {
+      "title": "文本编码（QwenImageEditPlus）"
+    }
+  },
+  "433:66": {
+    "inputs": {
+      "shift": 3,
+      "model": [
+        "433:440",
+        0
+      ]
+    },
+    "class_type": "ModelSamplingAuraFlow",
+    "_meta": {
+      "title": "采样算法（AuraFlow）"
+    }
+  },
+  "433:111": {
+    "inputs": {
+      "prompt": [
+        "435",
+        0
+      ],
+      "clip": [
+        "433:38",
+        0
+      ],
+      "vae": [
+        "433:39",
+        0
+      ],
+      "image1": [
+        "433:117",
+        0
+      ],
+      "image2": [
+        "433:118",
+        0
+      ],
+      "image3": [
+        "433:119",
+        0
+      ]
+    },
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "_meta": {
+      "title": "文本编码（QwenImageEditPlus）"
+    }
+  },
+  "433:88": {
+    "inputs": {
+      "pixels": [
+        "433:117",
+        0
+      ],
+      "vae": [
+        "433:39",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE编码"
+    }
+  },
+  "433:8": {
+    "inputs": {
+      "samples": [
+        "433:3",
+        0
+      ],
+      "vae": [
+        "433:39",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE解码"
+    }
+  },
+  "433:89": {
+    "inputs": {
+      "lora_name": "Qwen-Image-Lightning-4steps-V1.0-fp8-e4m3.safetensors",
+      "strength_model": "{{imageEditLoraStrength}}",
+      "model": [
+        "433:37",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "LoRA加载器（仅模型）"
+    }
+  },
+  "433:117": {
+    "inputs": {
+      "image": [
+        "78",
+        0
+      ]
+    },
+    "class_type": "FluxKontextImageScale",
+    "_meta": {
+      "title": "图像缩放为FluxKontext"
+    }
+  },
+  "433:3": {
+    "inputs": {
+      "seed": "{{seed}}",
+      "steps": [
+        "433:441",
+        0
+      ],
+      "cfg": [
+        "433:442",
+        0
+      ],
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1,
+      "model": [
+        "433:75",
+        0
+      ],
+      "positive": [
+        "433:111",
+        0
+      ],
+      "negative": [
+        "433:110",
+        0
+      ],
+      "latent_image": [
+        "433:88",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "K采样器"
+    }
+  },
+  "433:436": {
+    "inputs": {
+      "value": 4
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "Stpes"
+    }
+  },
+  "433:437": {
+    "inputs": {
+      "value": 1
+    },
+    "class_type": "PrimitiveFloat",
+    "_meta": {
+      "title": "CFG"
+    }
+  },
+  "433:438": {
+    "inputs": {
+      "value": 20
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "Steps"
+    }
+  },
+  "433:439": {
+    "inputs": {
+      "value": 4
+    },
+    "class_type": "PrimitiveFloat",
+    "_meta": {
+      "title": "CFG"
+    }
+  },
+  "433:440": {
+    "inputs": {
+      "switch": [
+        "433:443",
+        0
+      ],
+      "on_false": [
+        "433:37",
+        0
+      ],
+      "on_true": [
+        "433:89",
+        0
+      ]
+    },
+    "class_type": "ComfySwitchNode",
+    "_meta": {
+      "title": "Switch (Model)"
+    }
+  },
+  "433:441": {
+    "inputs": {
+      "switch": [
+        "433:443",
+        0
+      ],
+      "on_false": [
+        "433:438",
+        0
+      ],
+      "on_true": [
+        "433:436",
+        0
+      ]
+    },
+    "class_type": "ComfySwitchNode",
+    "_meta": {
+      "title": "Switch (Steps)"
+    }
+  },
+  "433:442": {
+    "inputs": {
+      "switch": [
+        "433:443",
+        0
+      ],
+      "on_false": [
+        "433:439",
+        0
+      ],
+      "on_true": [
+        "433:437",
+        0
+      ]
+    },
+    "class_type": "ComfySwitchNode",
+    "_meta": {
+      "title": "Switch (CFG)"
+    }
+  },
+  "433:443": {
+    "inputs": {
+      "value": true
+    },
+    "class_type": "PrimitiveBoolean",
+    "_meta": {
+      "title": "Enable Lightning LoRA"
+    }
+  },
+  "433:118": {
+    "inputs": {
+      "image": [
+        "469",
+        0
+      ]
+    },
+    "class_type": "FluxKontextImageScale",
+    "_meta": {
+      "title": "Scale Image 2 for FluxKontext"
+    }
+  },
+  "433:119": {
+    "inputs": {
+      "image": [
+        "470",
+        0
+      ]
+    },
+    "class_type": "FluxKontextImageScale",
+    "_meta": {
+      "title": "Scale Image 3 for FluxKontext"
+    }
+  }
+}
