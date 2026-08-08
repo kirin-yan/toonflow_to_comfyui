@@ -115,6 +115,88 @@ export default async (knex: Knex): Promise<void> => {
     }
   }
 
+  // 兼容旧版本配置，并为 ComfyUI 补齐 selfhost 工作流。
+  // HTTP URL 类型的自定义工作流保持不变；内嵌 JSON 跟随本地 selfhost 文件更新。
+  const comfyuiWorkflowFiles: Record<string, string> = {
+    imageTextWorkflow: "pic_from_text_toonflow.json",
+    imageSingleReferenceWorkflow: "pic_from_1pic_toonflow.json",
+    imageMultiReferenceWorkflow: "pic_from_3pic_toonflow.json",
+    imageReferenceWorkflow: "pic_from_3pic_toonflow.json",
+    videoTextWorkflow: "vedio_from_text_toonflow.json",
+    videoReferenceWorkflow: "vedio_from_1pic_toonflow.json",
+  };
+  const comfyuiWorkflowDirs = [
+    path.join(process.cwd(), "data", "comfyui-workflows", "selfhost"),
+    path.join(process.cwd(), "Toonflow", "data", "comfyui-workflows", "selfhost"),
+  ];
+  const comfyuiWorkflowDir = comfyuiWorkflowDirs.find((item) => fs.existsSync(item));
+
+  const vendorRows = await knex("o_vendorConfig").select("id", "inputValues", "models");
+  for (const row of vendorRows) {
+    const updates: { inputValues?: string; models?: string } = {};
+
+    if (row.id === "comfyui") {
+      const vendor = u.vendor.getVendor(row.id);
+      let savedInputValues: Record<string, string> = {};
+      if (row.inputValues?.trim()) {
+        try {
+          savedInputValues = JSON.parse(row.inputValues);
+        } catch {
+          console.warn("[修复数据库] comfyui.inputValues 不是有效 JSON，使用供应商默认值重建");
+        }
+      }
+      const mergedInputValues: Record<string, string> = {
+        ...(vendor?.inputValues ?? {}),
+        ...savedInputValues,
+      };
+      if (comfyuiWorkflowDir) {
+        for (const [key, filename] of Object.entries(comfyuiWorkflowFiles)) {
+          const savedWorkflow = String(mergedInputValues[key] ?? "").trim();
+          if (/^https?:\/\//i.test(savedWorkflow)) continue;
+          const workflowPath = path.join(comfyuiWorkflowDir, filename);
+          if (fs.existsSync(workflowPath)) {
+            mergedInputValues[key] = fs.readFileSync(workflowPath, "utf-8");
+          }
+        }
+
+        const usesSelfhostImageWorkflow = ["imageTextWorkflow", "imageSingleReferenceWorkflow", "imageMultiReferenceWorkflow"].some(
+          (key) => {
+            const value = String(mergedInputValues[key] ?? "").trim();
+            return value.length > 0 && !/^https?:\/\//i.test(value);
+          },
+        );
+        if (usesSelfhostImageWorkflow) {
+          mergedInputValues.textImageSteps = "8";
+          mergedInputValues.textImageCfg = "1.0";
+        }
+
+        const usesSelfhostVideoWorkflow = ["videoTextWorkflow", "videoReferenceWorkflow"].some((key) => {
+          const value = String(mergedInputValues[key] ?? "").trim();
+          return value.length > 0 && !/^https?:\/\//i.test(value);
+        });
+        if (usesSelfhostVideoWorkflow) {
+          mergedInputValues.videoDecodeTileSize = "256";
+          mergedInputValues.videoDecodeOverlap = "64";
+          mergedInputValues.videoDecodeTemporalSize = "64";
+          mergedInputValues.videoDecodeTemporalOverlap = "8";
+          mergedInputValues.timeoutMs = "3600000";
+        }
+      }
+      const serializedInputValues = JSON.stringify(mergedInputValues);
+      if (serializedInputValues !== row.inputValues) updates.inputValues = serializedInputValues;
+    } else if (!row.inputValues?.trim()) {
+      const vendor = u.vendor.getVendor(row.id);
+      updates.inputValues = JSON.stringify(vendor?.inputValues ?? {});
+    }
+    if (!row.models?.trim()) {
+      updates.models = "[]";
+    }
+
+    if (Object.keys(updates).length > 0) {
+      await knex("o_vendorConfig").where("id", row.id).update(updates);
+    }
+  }
+
   await dropColumn("o_vendorConfig", "author");
   await dropColumn("o_vendorConfig", "description");
   await dropColumn("o_vendorConfig", "name");

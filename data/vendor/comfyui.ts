@@ -111,16 +111,16 @@ declare const exports: {
 
 const vendor: VendorConfig = {
   id: "comfyui",
-  version: "2.1",
+  version: "2.2",
   author: "Toonflow",
   name: "ComfyUI",
   description: [
     "Use ComfyUI as a Toonflow image/video backend.",
     "Provide a ComfyUI API workflow JSON or an HTTP URL for each workflow field.",
-    "Supported placeholders include {{prompt}}, {{styledPrompt}}, {{negativePrompt}}, {{animeNegativePrompt}}, {{width}}, {{height}}, {{seed}}, {{filenamePrefix}}, {{image1}}, {{image2}}, {{image3}}, {{startImage}}, {{endImage}}, {{duration}}, {{fps}}, {{frames}}, {{resolution}}, {{aspectRatio}}.",
+    "Supported placeholders include {{prompt}}, {{styledPrompt}}, {{negativePrompt}}, {{animeNegativePrompt}}, {{width}}, {{height}}, {{seed}}, {{filenamePrefix}}, {{image1}}, {{image2}}, {{image3}}, {{startImage}}, {{endImage}}, {{duration}}, {{fps}}, {{frames}}, {{resolution}}, {{aspectRatio}}, {{videoDecodeTileSize}}, {{videoDecodeOverlap}}, {{videoDecodeTemporalSize}}, and {{videoDecodeTemporalOverlap}}.",
   ].join("\n\n"),
   inputs: [
-    { key: "baseUrl", label: "ComfyUI base URL", type: "url", required: true, placeholder: "http://127.0.0.1:8188" },
+    { key: "baseUrl", label: "ComfyUI base URL", type: "url", required: true, placeholder: "http://127.0.0.1:8000" },
     { key: "imageTextWorkflow", label: "Image text workflow", type: "text", required: false, placeholder: "Workflow JSON or http(s) URL" },
     {
       key: "imageSingleReferenceWorkflow",
@@ -167,19 +167,20 @@ const vendor: VendorConfig = {
     },
     { key: "negativePrompt", label: "Default negative prompt", type: "text", required: false },
     { key: "textImageSteps", label: "Text-image steps", type: "text", required: false, placeholder: "8" },
-    { key: "textImageCfg", label: "Text-image CFG", type: "text", required: false, placeholder: "1.2" },
-    { key: "imageEditLoraStrength", label: "Image edit LoRA strength", type: "text", required: false, placeholder: "1.0" },
+    { key: "textImageCfg", label: "Text-image CFG", type: "text", required: false, placeholder: "1.0" },
     { key: "videoImageCompression", label: "Video image compression", type: "text", required: false, placeholder: "14" },
-    { key: "videoDecodeOverlap", label: "Video decode overlap", type: "text", required: false, placeholder: "96" },
+    { key: "videoDecodeTileSize", label: "Video decode tile size", type: "text", required: false, placeholder: "256" },
+    { key: "videoDecodeOverlap", label: "Video decode overlap", type: "text", required: false, placeholder: "64" },
+    { key: "videoDecodeTemporalSize", label: "Video decode temporal size", type: "text", required: false, placeholder: "64" },
     { key: "videoDecodeTemporalOverlap", label: "Video temporal overlap", type: "text", required: false, placeholder: "8" },
     { key: "videoTextFps", label: "Video text FPS", type: "text", required: false, placeholder: "24" },
     { key: "videoReferenceFps", label: "Video reference FPS", type: "text", required: false, placeholder: "25" },
     { key: "videoFps", label: "Legacy video FPS", type: "text", required: false, placeholder: "24" },
     { key: "pollIntervalMs", label: "Poll interval ms", type: "text", required: false, placeholder: "3000" },
-    { key: "timeoutMs", label: "Timeout ms", type: "text", required: false, placeholder: "1800000" },
+    { key: "timeoutMs", label: "Timeout ms", type: "text", required: false, placeholder: "3600000" },
   ],
   inputValues: {
-    baseUrl: "http://127.0.0.1:8188",
+    baseUrl: "http://127.0.0.1:8000",
     imageTextWorkflow: "",
     imageSingleReferenceWorkflow: "",
     imageMultiReferenceWorkflow: "",
@@ -192,16 +193,17 @@ const vendor: VendorConfig = {
     negativePrompt:
       "photorealistic, realistic skin, 3d render, blurry, low detail, low quality, ugly, distorted anatomy, extra fingers, bad hands, messy background",
     textImageSteps: "8",
-    textImageCfg: "1.2",
-    imageEditLoraStrength: "1.0",
+    textImageCfg: "1.0",
     videoImageCompression: "14",
-    videoDecodeOverlap: "96",
+    videoDecodeTileSize: "256",
+    videoDecodeOverlap: "64",
+    videoDecodeTemporalSize: "64",
     videoDecodeTemporalOverlap: "8",
     videoTextFps: "24",
     videoReferenceFps: "25",
     videoFps: "24",
     pollIntervalMs: "3000",
-    timeoutMs: "1800000",
+    timeoutMs: "3600000",
   },
   models: [
     {
@@ -214,12 +216,16 @@ const vendor: VendorConfig = {
       name: "ComfyUI Video Workflow",
       modelName: "comfyui-video",
       type: "video",
-      mode: ["text", "singleImage", "startFrameOptional", "startEndRequired", ["imageReference:9"]],
-      audio: false,
+      mode: ["text", "singleImage", "startFrameOptional"],
+      audio: true,
       durationResolutionMap: [
         {
-          duration: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-          resolution: ["480p", "720p", "1080p"],
+          duration: [1, 2, 3, 4, 5],
+          resolution: ["480p"],
+        },
+        {
+          duration: [1, 2, 3],
+          resolution: ["720p"],
         },
       ],
     },
@@ -252,7 +258,7 @@ const fallbackMimeByType: Record<ReferenceList["type"], string> = {
   audio: "audio/mpeg",
 };
 
-const getBaseUrl = () => (vendor.inputValues.baseUrl || "http://127.0.0.1:8188").replace(/\/+$/, "");
+const getBaseUrl = () => (vendor.inputValues.baseUrl || "http://127.0.0.1:8000").replace(/\/+$/, "");
 
 const parseInteger = (value: string | undefined, fallback: number) => {
   const parsed = Number.parseInt(String(value ?? "").trim(), 10);
@@ -306,13 +312,13 @@ const getVideoDimensions = (resolution: string, aspectRatio: VideoConfig["aspect
   const preset = resolution === "1080p" ? 1080 : resolution === "480p" ? 480 : 720;
   if (aspectRatio === "9:16") {
     return {
-      width: preset === 1080 ? 608 : preset === 480 ? 288 : 416,
-      height: preset === 1080 ? 1080 : preset === 480 ? 480 : 720,
+      width: preset === 1080 ? 1088 : preset === 480 ? 448 : 704,
+      height: preset === 1080 ? 1920 : preset === 480 ? 832 : 1280,
     };
   }
   return {
-    width: preset === 1080 ? 1920 : preset === 480 ? 854 : 1280,
-    height: preset,
+    width: preset === 1080 ? 1920 : preset === 480 ? 832 : 1280,
+    height: preset === 1080 ? 1088 : preset === 480 ? 448 : 704,
   };
 };
 
@@ -347,7 +353,6 @@ const parseWorkflowValue = async (label: string, rawValue: string) => {
 
 const getWorkflow = async (kind: "image" | "video", useReferenceWorkflow: boolean, referenceCount = 0) => {
   const textKey = kind === "image" ? "imageTextWorkflow" : "videoTextWorkflow";
-  const fallback = useReferenceWorkflow ? vendor.inputValues[textKey] : "";
   const candidates = !useReferenceWorkflow
     ? [{ label: `${kind} text workflow`, value: vendor.inputValues[textKey] }]
     : kind === "image"
@@ -358,8 +363,6 @@ const getWorkflow = async (kind: "image" | "video", useReferenceWorkflow: boolea
           ]
         : [
             { label: "image single-reference workflow", value: vendor.inputValues.imageSingleReferenceWorkflow },
-            { label: "image reference workflow", value: vendor.inputValues.imageReferenceWorkflow },
-            { label: "image multi-reference workflow", value: vendor.inputValues.imageMultiReferenceWorkflow },
           ]
       : [{ label: `${kind} reference workflow`, value: vendor.inputValues.videoReferenceWorkflow }];
 
@@ -367,9 +370,6 @@ const getWorkflow = async (kind: "image" | "video", useReferenceWorkflow: boolea
   for (const candidate of candidates) {
     workflow = await parseWorkflowValue(candidate.label, candidate.value || "");
     if (workflow) break;
-  }
-  if (!workflow && fallback) {
-    workflow = await parseWorkflowValue(`${kind} text workflow`, fallback);
   }
   if (!workflow) {
     throw new Error(`Missing ${kind} ${useReferenceWorkflow ? "reference" : "text"} workflow`);
@@ -453,6 +453,53 @@ const applyPlaceholders = (value: any, replacements: Record<string, any>): any =
   });
 };
 
+const removeEmptyOptionalImageBranches = (workflow: Record<string, any>) => {
+  const invalidNodeIds = new Set<string>();
+  const bypassLinks = new Map<string, any>();
+  for (const [nodeId, node] of Object.entries(workflow)) {
+    if (node?.class_type === "LoadImage" && !String(node?.inputs?.image ?? "").trim()) {
+      invalidNodeIds.add(nodeId);
+    }
+  }
+
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const [nodeId, node] of Object.entries(workflow)) {
+      if (invalidNodeIds.has(nodeId) || !node?.inputs) continue;
+      for (const [inputName, inputValue] of Object.entries(node.inputs)) {
+        const referencesInvalidNode =
+          Array.isArray(inputValue) && typeof inputValue[0] === "string" && invalidNodeIds.has(inputValue[0]);
+        if (!referencesInvalidNode) continue;
+        if (node.class_type === "TextEncodeQwenImageEditPlus" && /^image\d+$/.test(inputName)) {
+          delete node.inputs[inputName];
+        } else if (node.class_type === "ReferenceLatent" && inputName === "latent" && Array.isArray(node.inputs.conditioning)) {
+          invalidNodeIds.add(nodeId);
+          bypassLinks.set(nodeId, node.inputs.conditioning);
+        } else if (bypassLinks.has(inputValue[0])) {
+          let bypass = bypassLinks.get(inputValue[0]);
+          const visited = new Set<string>();
+          while (Array.isArray(bypass) && invalidNodeIds.has(bypass[0]) && bypassLinks.has(bypass[0]) && !visited.has(bypass[0])) {
+            visited.add(bypass[0]);
+            bypass = bypassLinks.get(bypass[0]);
+          }
+          if (Array.isArray(bypass) && !invalidNodeIds.has(bypass[0])) {
+            node.inputs[inputName] = bypass;
+          } else {
+            invalidNodeIds.add(nodeId);
+          }
+        } else {
+          invalidNodeIds.add(nodeId);
+        }
+        changed = true;
+        break;
+      }
+    }
+  }
+
+  for (const nodeId of invalidNodeIds) delete workflow[nodeId];
+};
+
 const assertNoUnresolvedPlaceholders = (workflow: Record<string, any>) => {
   const matches = JSON.stringify(workflow).match(/\{\{[a-zA-Z0-9_]+\}\}/g);
   if (matches && matches.length > 0) {
@@ -476,11 +523,12 @@ const extractHistoryError = (record: any) => {
   return "";
 };
 
-const extractOutputDescriptor = (record: any) => {
+const extractOutputDescriptor = (record: any, expectedKind: "image" | "video") => {
   const outputs = record?.outputs || {};
+  const outputKeys = expectedKind === "video" ? ["videos", "gifs"] : ["images"];
   for (const nodeId of Object.keys(outputs)) {
     const nodeOutput = outputs[nodeId] || {};
-    for (const key of ["images", "videos", "gifs", "audio"]) {
+    for (const key of outputKeys) {
       const list = nodeOutput[key];
       if (!Array.isArray(list)) continue;
       const file = list.find((item: any) => item && item.filename);
@@ -505,8 +553,13 @@ const getViewUrl = (file: { filename: string; subfolder?: string; type?: string 
   return `${getBaseUrl()}/view?${query}`;
 };
 
-const runWorkflow = async (workflow: Record<string, any>, replacements: Record<string, any>) => {
+const runWorkflow = async (
+  workflow: Record<string, any>,
+  replacements: Record<string, any>,
+  expectedKind: "image" | "video",
+) => {
   const prompt = applyPlaceholders(workflow, replacements);
+  removeEmptyOptionalImageBranches(prompt);
   assertNoUnresolvedPlaceholders(prompt);
   logger(`[ComfyUI] queue prompt`);
   const queueResponse = await axios.post(
@@ -535,10 +588,10 @@ const runWorkflow = async (workflow: Record<string, any>, replacements: Record<s
     const record = getHistoryRecord(historyResponse?.data, promptId);
     const error = extractHistoryError(record);
     if (error) return { completed: true, error };
-    const output = extractOutputDescriptor(record);
+    const output = extractOutputDescriptor(record, expectedKind);
     if (output) return { completed: true, data: JSON.stringify(output) };
-    if (record?.status?.completed === true && !record?.outputs) {
-      return { completed: true, error: "ComfyUI workflow finished without outputs" };
+    if (record?.status?.completed === true) {
+      return { completed: true, error: `ComfyUI workflow finished without an expected ${expectedKind} output` };
     }
     return { completed: false };
   }, pollInterval, timeout);
@@ -566,10 +619,11 @@ const buildCommonReplacements = (prompt: string, aspectRatio: string, extras: Re
     animePositivePrefix,
     animeNegativePrompt: defaultNegativePrompt,
     textImageSteps: parseInteger(vendor.inputValues.textImageSteps, 8),
-    textImageCfg: parseNumber(vendor.inputValues.textImageCfg, 1.2),
-    imageEditLoraStrength: parseNumber(vendor.inputValues.imageEditLoraStrength, 1),
+    textImageCfg: parseNumber(vendor.inputValues.textImageCfg, 1),
     videoImageCompression: parseInteger(vendor.inputValues.videoImageCompression, 14),
-    videoDecodeOverlap: parseInteger(vendor.inputValues.videoDecodeOverlap, 96),
+    videoDecodeTileSize: parseInteger(vendor.inputValues.videoDecodeTileSize, 256),
+    videoDecodeOverlap: parseInteger(vendor.inputValues.videoDecodeOverlap, 64),
+    videoDecodeTemporalSize: parseInteger(vendor.inputValues.videoDecodeTemporalSize, 64),
     videoDecodeTemporalOverlap: parseInteger(vendor.inputValues.videoDecodeTemporalOverlap, 8),
     aspectRatio,
     seed: nextSeed(),
@@ -598,8 +652,8 @@ const addReferenceReplacements = (replacements: Record<string, any>, uploadedRef
   replacements.referenceAudios = audioNames;
   replacements.image = imageNames[0] || "";
   replacements.image1 = imageNames[0] || "";
-  replacements.image2 = imageNames[1] || imageNames[0] || "";
-  replacements.image3 = imageNames[2] || imageNames[1] || imageNames[0] || "";
+  replacements.image2 = imageNames[1] || "";
+  replacements.image3 = imageNames[2] || "";
   replacements.referenceImage = imageNames[0] || "";
   replacements.video = videoNames[0] || "";
   replacements.referenceVideo = videoNames[0] || "";
@@ -633,6 +687,12 @@ const textRequest = () => {
 
 const imageRequest = async (config: ImageConfig, model: ImageModel): Promise<string> => {
   const references = config.referenceList || [];
+  if (config.size && config.size !== "1K") {
+    throw new Error(`This selfhost profile supports 1K images on a 12GB GPU; received ${config.size}`);
+  }
+  if (references.length > 3) {
+    throw new Error(`ComfyUI multi-reference image workflow supports at most 3 images; received ${references.length}`);
+  }
   const useReferenceWorkflow = references.length > 0;
   const workflow = await getWorkflow("image", useReferenceWorkflow, references.length);
   const uploadedReferences = await uploadReferences(references);
@@ -646,11 +706,19 @@ const imageRequest = async (config: ImageConfig, model: ImageModel): Promise<str
   });
   addReferenceReplacements(replacements, uploadedReferences);
   logger(`[ComfyUI] image request with ${uploadedReferences.length} reference(s)`);
-  return await runWorkflow(workflow, replacements);
+  return await runWorkflow(workflow, replacements, "image");
 };
 
 const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<string> => {
   const references = config.referenceList || [];
+  const resolution = config.resolution || "480p";
+  const maxDuration = resolution === "480p" ? 5 : resolution === "720p" ? 3 : 0;
+  if (!maxDuration) {
+    throw new Error(`This selfhost profile supports only 480p and 720p video; received ${resolution}`);
+  }
+  if (!Number.isInteger(config.duration) || config.duration < 1 || config.duration > maxDuration) {
+    throw new Error(`This selfhost profile supports ${resolution} video durations from 1 to ${maxDuration} seconds`);
+  }
   const useReferenceWorkflow = references.length > 0;
   const workflow = await getWorkflow("video", useReferenceWorkflow);
   const uploadedReferences = await uploadReferences(references);
@@ -659,22 +727,24 @@ const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<str
   const fps = useReferenceWorkflow
     ? parseInteger(vendor.inputValues.videoReferenceFps, fallbackFps)
     : parseInteger(vendor.inputValues.videoTextFps, fallbackFps);
-  const { width, height } = getVideoDimensions(config.resolution || "720p", config.aspectRatio || "16:9");
+  const { width, height } = getVideoDimensions(resolution, config.aspectRatio || "16:9");
+  const requestedFrames = Math.max(1, Math.round((config.duration || 0) * fps));
+  const frames = Math.floor(requestedFrames / 8) * 8 + 1;
   const replacements = buildCommonReplacements(config.prompt, config.aspectRatio, {
     modelName: model.modelName,
     duration: config.duration,
-    resolution: config.resolution || "720p",
+    resolution,
     width,
     height,
     fps,
-    frames: Math.max(1, Math.round((config.duration || 0) * fps)),
+    frames,
     audio: config.audio === true,
     hasReference: uploadedReferences.length > 0,
     mode: normalizedMode.length === 1 ? normalizedMode[0] : JSON.stringify(normalizedMode),
   });
   addReferenceReplacements(replacements, uploadedReferences);
   logger(`[ComfyUI] video request with ${uploadedReferences.length} reference(s)`);
-  return await runWorkflow(workflow, replacements);
+  return await runWorkflow(workflow, replacements, "video");
 };
 
 const ttsRequest = async (): Promise<string> => {
@@ -682,7 +752,7 @@ const ttsRequest = async (): Promise<string> => {
 };
 
 const checkForUpdates = async (): Promise<{ hasUpdate: boolean; latestVersion: string; notice: string }> => {
-  return { hasUpdate: false, latestVersion: "2.0", notice: "" };
+  return { hasUpdate: false, latestVersion: "2.2", notice: "" };
 };
 
 const updateVendor = async (): Promise<string> => {

@@ -420,52 +420,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.primary(["id"]);
         table.unique(["id"]);
       },
-      initData: async (knex) => {
-        await knex("o_vendorConfig").insert([
-          {
-            id: "toonflow",
-            inputValues: "",
-            models: "[]",
-            enable: 0,
-          },
-          {
-            id: "volcengine",
-            inputValues: "",
-            models: "[]",
-            enable: 0,
-          },
-          {
-            id: "minimax",
-            inputValues: "",
-            models: "[]",
-            enable: 0,
-          },
-          {
-            id: "openai",
-            inputValues: "",
-            models: "[]",
-            enable: 0,
-          },
-          {
-            id: "klingai",
-            inputValues: "",
-            models: "[]",
-            enable: 0,
-          },
-          {
-            id: "vidu",
-            inputValues: "",
-            models: "[]",
-            enable: 0,
-          },
-          {
-            id: "comfyui",
-            inputValues: "",
-            models: "[]",
-            enable: 0,
-          },
-        ]);
-      },
     },
     //图片工作流表
     {

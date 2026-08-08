@@ -34,10 +34,10 @@ const db = knex({
   useNullAsDefault: true,
 });
 
-(async () => {
+export const dbReady = (async () => {
   await initDB(db);
   await fixDB(db);
-  if (process.env.NODE_ENV == "dev") initKnexType(db);
+  if (process.env.NODE_ENV == "dev") await initKnexType(db);
 })();
 
 const dbClient = Object.assign(<TName extends TableName>(table: TName) => db<RowType<TName>, RowType<TName>[]>(table), db);

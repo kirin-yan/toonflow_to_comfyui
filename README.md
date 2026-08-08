@@ -124,7 +124,10 @@
 
 - 无参考图：走 `imageTextWorkflow`
 - 1 张参考图：优先走 `imageSingleReferenceWorkflow`
-- 2 张及以上参考图：走 `imageMultiReferenceWorkflow`
+- 2～3 张参考图：走 `imageMultiReferenceWorkflow`
+- 超过 3 张参考图：接口直接返回明确错误，不再上传后静默忽略
+
+启动时会把 `data/comfyui-workflows/selfhost` 中的五个工作流合并到 `comfyui.inputValues`。已配置的 HTTP(S) 工作流 URL 保持不变；数据库中的内嵌 JSON 会随本地 selfhost 文件更新。
 
 ## 5. 这次增加的占位符与参数
 
@@ -154,9 +157,10 @@ ComfyUI 工作流里现在支持这些核心占位符：
 - `animeNegativePrompt`
 - `textImageSteps`
 - `textImageCfg`
-- `imageEditLoraStrength`
 - `videoImageCompression`
+- `videoDecodeTileSize`
 - `videoDecodeOverlap`
+- `videoDecodeTemporalSize`
 - `videoDecodeTemporalOverlap`
 
 ### 5.3 这些参数的作用
@@ -178,10 +182,6 @@ ComfyUI 工作流里现在支持这些核心占位符：
 
 - 控制文生图提示词引导强度
 
-`imageEditLoraStrength`
-
-- 控制多图生图中的 LoRA 强度
-
 `videoImageCompression`
 
 - 控制单图生视频时图像预处理压缩强度
@@ -189,6 +189,11 @@ ComfyUI 工作流里现在支持这些核心占位符：
 `videoDecodeOverlap`
 
 - 控制视频 tiled decode 重叠量
+
+`videoDecodeTileSize` / `videoDecodeTemporalSize`
+
+- 控制 LTX 视频 VAE 的空间和时间分块大小
+- 当前 12GB 显存配置默认使用 `256` / `64`
 
 `videoDecodeTemporalOverlap`
 
@@ -205,12 +210,14 @@ ComfyUI 工作流里现在支持这些核心占位符：
 改动：
 
 - 正向提示词改为 `{{styledPrompt}}`
-- 新增动漫负面提示词分支 `{{animeNegativePrompt}}`
+- 使用零化负向条件，符合 Z-Image Turbo 无 CFG 负向提示词的运行方式
 - 步数改为 `{{textImageSteps}}`
 - CFG 改为 `{{textImageCfg}}`
 - 分辨率改为 `{{width}}` / `{{height}}`
 - 输出前缀改为 `{{filenamePrefix}}`
 - seed 改为 `{{seed}}`
+- 保留 FLUX.2 Klein Base 模型，采样改为 50 步、CFG 4
+- 输入图按 `{{width}}` / `{{height}}` 缩放，接口尺寸不再被忽略
 
 ### 6.2 单图生图
 
@@ -236,11 +243,13 @@ ComfyUI 工作流里现在支持这些核心占位符：
 改动：
 
 - 支持 `{{image1}}`、`{{image2}}`、`{{image3}}`
-- 新增第三张图加载节点
-- 为第二、第三张图补了 `FluxKontextImageScale`
+- 新增第二、第三张图的缩放、VAE 编码和 ReferenceLatent 链
 - 正向提示词改为 `{{styledPrompt}}`
 - 负向提示词改为 `{{animeNegativePrompt}}`
-- LoRA 强度改为 `{{imageEditLoraStrength}}`
+- 改为复用 `flux-2-klein-base-4b-fp8.safetensors`、Qwen 4B FP8 文本编码器和 Flux2 VAE
+- 使用 50 步、CFG 4，避免加载 Qwen-Image 20B
+- 两张参考图时动态旁路第三图 ReferenceLatent，不再复制第二张图
+- 三张输入图统一按 `{{width}}` / `{{height}}` 缩放
 - seed 改为 `{{seed}}`
 - 输出前缀改为 `{{filenamePrefix}}`
 
@@ -287,19 +296,29 @@ ComfyUI 工作流里现在支持这些核心占位符：
   "animeNegativePrompt": "photorealistic, realistic skin, 3d render, blurry, low detail, low quality, ugly, distorted anatomy, extra fingers, bad hands, messy background",
   "negativePrompt": "photorealistic, realistic skin, 3d render, blurry, low detail, low quality, ugly, distorted anatomy, extra fingers, bad hands, messy background",
   "textImageSteps": "8",
-  "textImageCfg": "1.2",
-  "imageEditLoraStrength": "1.0",
+  "textImageCfg": "1.0",
   "videoImageCompression": "14",
-  "videoDecodeOverlap": "96",
-  "videoDecodeTemporalOverlap": "8"
+  "videoDecodeTileSize": "256",
+  "videoDecodeOverlap": "64",
+  "videoDecodeTemporalSize": "64",
+  "videoDecodeTemporalOverlap": "8",
+  "timeoutMs": "3600000"
 }
 ```
+
+### 7.1 RTX 3060 12GB 硬件范围
+
+- 图片：仅开放 `1K`，`2K` / `4K` 会返回明确错误
+- 视频：`480p` 支持 1～5 秒，`720p` 支持 1～3 秒
+- `1080p` 不开放，避免工作流进入高概率 OOM 状态
+- 三套图片工作流的文本编码器固定在 CPU，以给扩散模型保留显存
+- 两套视频工作流使用 `256` 空间分块和 `64` 时间分块
 
 ## 8. 使用方法
 
 ### 8.1 启动顺序
 
-1. 先启动 ComfyUI，端口保持 `8000`
+1. 先启动 ComfyUI，端口保持 `8000`；12GB 显存建议附加 `--lowvram --preview-method none --cache-none --reserve-vram 1`
 2. 再启动 Toonflow，端口保持 `10588`
 3. 登录 Toonflow
 4. 确认供应商 `comfyui` 已启用
@@ -328,10 +347,9 @@ ComfyUI 工作流里现在支持这些核心占位符：
 1. `animePositivePrefix`
 2. `animeNegativePrompt`
 3. `textImageCfg`
-4. `imageEditLoraStrength`
-5. `videoImageCompression`
+4. `videoImageCompression`
 
-这 5 个参数最直接影响动漫感、人物质感、参考图服从度、视频清晰度。
+这 4 个参数最直接影响动漫感、人物质感和视频清晰度。
 
 ## 9. 已完成的验证
 

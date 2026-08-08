@@ -38,6 +38,31 @@ export default router.post(
   }),
   async (req, res) => {
     const { scriptId, projectId, prompt, uploadData, model, duration, resolution, audio, mode, trackId } = req.body;
+    const separatorIndex = model.indexOf(":");
+    if (separatorIndex <= 0 || separatorIndex === model.length - 1) {
+      return res.status(400).send({ code: 400, data: null, message: `视频模型格式错误：${model}` });
+    }
+    const vendorId = model.slice(0, separatorIndex);
+    const videoModelName = model.slice(separatorIndex + 1);
+    const modelList = await u.vendor.getModelList(vendorId);
+    const selectedModel = modelList.find((item: any) => item.modelName === videoModelName && item.type === "video");
+    if (!selectedModel) {
+      return res.status(400).send({ code: 400, data: null, message: `未找到视频模型：${model}` });
+    }
+    const durationResolutionMap = Array.isArray(selectedModel.durationResolutionMap) ? selectedModel.durationResolutionMap : [];
+    const supportedCombination = durationResolutionMap.some(
+      (item: any) => Array.isArray(item.duration) && item.duration.includes(duration) && Array.isArray(item.resolution) && item.resolution.includes(resolution),
+    );
+    if (!supportedCombination) {
+      const supported = durationResolutionMap
+        .map((item: any) => `${(item.resolution || []).join("/")}：${(item.duration || []).join("/")}秒`)
+        .join("；");
+      return res.status(400).send({
+        code: 400,
+        data: null,
+        message: `当前模型不支持 ${resolution}、${duration}秒。支持范围：${supported || "未声明"}`,
+      });
+    }
     let modeData = [];
     if (Array.isArray(mode)) {
     } else if (typeof mode === "string" && mode.startsWith('["') && mode.endsWith('"]')) {

@@ -102,24 +102,13 @@
       "title": "Video Combine 🎥🅥🅗🅢"
     }
   },
-  "196": {
-    "inputs": {
-      "Xi": 5,
-      "Xf": 5,
-      "isfloatX": 0
-    },
-    "class_type": "mxSlider",
-    "_meta": {
-      "title": "Clip Length ( in seconds )"
-    }
-  },
   "211": {
     "inputs": {
       "PowerLoraLoaderHeaderWidget": {
         "type": "PowerLoraLoaderHeaderWidget"
       },
       "lora_1": {
-        "on": true,
+        "on": false,
         "lora": "ltx-2.3-22b-distilled-lora-dynamic_fro09_avg_rank_105_bf16.safetensors",
         "strength": 0.6
       },
@@ -188,21 +177,9 @@
       "title": "LTXV Chunk FeedForward"
     }
   },
-  "852": {
-    "inputs": {
-      "images": [
-        "759:1748",
-        0
-      ]
-    },
-    "class_type": "PreviewImage",
-    "_meta": {
-      "title": "Preview First Frame Resized [[P:02 Image to Video]] "
-    }
-  },
   "869": {
     "inputs": {
-      "value": 24
+      "value": "{{fps}}"
     },
     "class_type": "JWInteger",
     "_meta": {
@@ -219,99 +196,6 @@
     "class_type": "JWIntegerToFloat",
     "_meta": {
       "title": "Integer to Float"
-    }
-  },
-  "948": {
-    "inputs": {
-      "value": 33
-    },
-    "class_type": "JWInteger",
-    "_meta": {
-      "title": "Image Compession"
-    }
-  },
-  "1110": {
-    "inputs": {
-      "sampler_name": "euler_ancestral"
-    },
-    "class_type": "Sampler Selector (Image Saver)",
-    "_meta": {
-      "title": "Sampler Selector (Image Saver)"
-    }
-  },
-  "1353": {
-    "inputs": {
-      "node_settings": false,
-      "Active All": false,
-      "01 Text to Video": false,
-      "02 Image to Video": true,
-      "03 Video to Video": false,
-      "Audio input": false,
-      "Last Frame input": false,
-      "Mid Frame input": false
-    },
-    "class_type": "OrchestratorNodeMuter",
-    "_meta": {
-      "title": "Select options (see Table above)"
-    }
-  },
-  "1688": {
-    "inputs": {
-      "Xi": 1024,
-      "Xf": 1024,
-      "isfloatX": 0
-    },
-    "class_type": "mxSlider",
-    "_meta": {
-      "title": "Longer Edge"
-    }
-  },
-  "1774": {
-    "inputs": {
-      "combo": "original"
-    },
-    "class_type": "Combo Clone",
-    "_meta": {
-      "title": "Aspect Ratio"
-    }
-  },
-  "1795": {
-    "inputs": {
-      "any_02": [
-        "149",
-        0
-      ]
-    },
-    "class_type": "Any Switch (rgthree)",
-    "_meta": {
-      "title": "Any Switch (rgthree)"
-    }
-  },
-  "1796": {
-    "inputs": {
-      "aspect_ratio": [
-        "1774",
-        0
-      ],
-      "proportional_width": 3,
-      "proportional_height": 4,
-      "fit": "crop",
-      "method": "lanczos",
-      "round_to_multiple": "64",
-      "scale_to_side": "longest",
-      "scale_to_length": [
-        "1688",
-        0
-      ],
-      "background_color": "#000000",
-      "image": [
-        "1795",
-        0
-      ]
-    },
-    "class_type": "LayerUtility: ImageScaleByAspectRatio V2",
-    "_meta": {
-      "title": "图层工具：按宽高比缩放 V2"
     }
   },
   "759:1065": {
@@ -337,55 +221,6 @@
     "class_type": "LTXVConcatAVLatent",
     "_meta": {
       "title": "LTXVConcatAVLatent"
-    }
-  },
-  "759:1201": {
-    "inputs": {
-      "audio_vae": [
-        "175",
-        0
-      ]
-    },
-    "class_type": "LTXVAudioVAEEncode",
-    "_meta": {
-      "title": "LTXV音频VAE编码"
-    }
-  },
-  "759:1221": {
-    "inputs": {
-      "expression": "a * 24 + 1",
-      "variables.a": [
-        "759:1222",
-        0
-      ]
-    },
-    "class_type": "SimpleCalculatorKJ",
-    "_meta": {
-      "title": "a*24+1"
-    }
-  },
-  "759:1194": {
-    "inputs": {
-      "value": [
-        "759:1221",
-        1
-      ]
-    },
-    "class_type": "PrimitiveInt",
-    "_meta": {
-      "title": "Frames"
-    }
-  },
-  "759:1222": {
-    "inputs": {
-      "value": [
-        "196",
-        0
-      ]
-    },
-    "class_type": "JWIntegerToFloat",
-    "_meta": {
-      "title": "Integer to Float"
     }
   },
   "759:1163": {
@@ -477,56 +312,6 @@
       "title": "LTXV 空音频潜空间"
     }
   },
-  "759:1196": {
-    "inputs": {
-      "width": [
-        "759:1299",
-        1
-      ],
-      "height": [
-        "759:1613",
-        1
-      ],
-      "length": [
-        "759:1194",
-        0
-      ],
-      "batch_size": 1
-    },
-    "class_type": "EmptyLTXVLatentVideo",
-    "_meta": {
-      "title": "空Latent视频（LTXV）"
-    }
-  },
-  "759:1202": {
-    "inputs": {
-      "value": "{{fps}}",
-      "video_start_time": 5,
-      "video_end_time": [
-        "759:1222",
-        0
-      ],
-      "audio_start_time": 5,
-      "audio_end_time": [
-        "759:1222",
-        0
-      ],
-      "max_length": "pad",
-      "existing_mask_mode": "add",
-      "video_latent": [
-        "759:1193",
-        0
-      ],
-      "audio_latent": [
-        "759:1201",
-        0
-      ]
-    },
-    "class_type": "LTXVAudioVideoMask",
-    "_meta": {
-      "title": "LTXVAudioVideoMask"
-    }
-  },
   "759:1052": {
     "inputs": {
       "cfg": 1,
@@ -548,24 +333,6 @@
       "title": "CFG引导器"
     }
   },
-  "759:1193": {
-    "inputs": {
-      "strength": 0.8,
-      "bypass": false,
-      "vae": [
-        "174",
-        0
-      ],
-      "latent": [
-        "759:1196",
-        0
-      ]
-    },
-    "class_type": "LTXVImgToVideoInplace",
-    "_meta": {
-      "title": "LTXV图像转视频（原地）"
-    }
-  },
   "759:1380": {
     "inputs": {
       "any": [
@@ -580,14 +347,20 @@
   },
   "759:1056": {
     "inputs": {
-      "sampler_name": [
-        "1110",
-        0
-      ]
+      "sampler_name": "euler_ancestral_cfg_pp"
     },
     "class_type": "KSamplerSelect",
     "_meta": {
-      "title": "K采样器选择"
+      "title": "第一阶段采样器"
+    }
+  },
+  "759:1057": {
+    "inputs": {
+      "sampler_name": "euler_cfg_pp"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "第二阶段采样器"
     }
   },
   "759:1060": {
@@ -600,10 +373,7 @@
         "759:1081",
         1
       ],
-      "length": [
-        "759:1073",
-        0
-      ],
+      "length": "{{frames}}",
       "batch_size": 1
     },
     "class_type": "EmptyLTXVLatentVideo",
@@ -661,32 +431,17 @@
   },
   "759:1069": {
     "inputs": {
-      "sigmas": "0.8025, 0.6332, 0.3425, 0.0"
+      "sigmas": "0.909375, 0.725, 0.421875, 0.0"
     },
     "class_type": "ManualSigmas",
     "_meta": {
       "title": "自定义Sigmas"
     }
   },
-  "759:1072": {
-    "inputs": {
-      "images": [
-        "759:1071",
-        0
-      ]
-    },
-    "class_type": "FinalFrameSelector",
-    "_meta": {
-      "title": "Final Frame Selector"
-    }
-  },
   "759:1081": {
     "inputs": {
       "expression": "a * 0.5",
-      "values.a": [
-        "1796",
-        4
-      ]
+      "values.a": "{{height}}"
     },
     "class_type": "ComfyMathExpression",
     "_meta": {
@@ -696,10 +451,7 @@
   "759:1080": {
     "inputs": {
       "expression": "a * 0.5",
-      "values.a": [
-        "1796",
-        3
-      ]
+      "values.a": "{{width}}"
     },
     "class_type": "ComfyMathExpression",
     "_meta": {
@@ -708,15 +460,8 @@
   },
   "759:1073": {
     "inputs": {
-      "expression": "a*b+1",
-      "a": [
-        "196",
-        0
-      ],
-      "b": [
-        "869",
-        0
-      ]
+      "expression": "a",
+      "a": "{{frames}}"
     },
     "class_type": "MathExpression|pysssss",
     "_meta": {
@@ -851,14 +596,8 @@
   "759:1589": {
     "inputs": {
       "resize_type": "scale dimensions",
-      "resize_type.width": [
-        "1796",
-        3
-      ],
-      "resize_type.height": [
-        "1796",
-        4
-      ],
+      "resize_type.width": "{{width}}",
+      "resize_type.height": "{{height}}",
       "resize_type.crop": "center",
       "scale_method": "lanczos",
       "input": [
@@ -896,87 +635,11 @@
       "title": "[[P:02 Image to Video]]"
     }
   },
-  "759:1746": {
-    "inputs": {
-      "any": [
-        "759:1589",
-        0
-      ]
-    },
-    "class_type": "LayerUtility: AnyRerouter",
-    "_meta": {
-      "title": "[[P:02 Image to Video]]"
-    }
-  },
-  "759:1748": {
-    "inputs": {
-      "any_01": [
-        "759:1746",
-        0
-      ]
-    },
-    "class_type": "Any Switch (rgthree)",
-    "_meta": {
-      "title": "Any Switch (rgthree)"
-    }
-  },
-  "759:1749": {
-    "inputs": {
-      "expression": "a * 0.5",
-      "values.a": [
-        "1796",
-        4
-      ]
-    },
-    "class_type": "ComfyMathExpression",
-    "_meta": {
-      "title": "* 0.5"
-    }
-  },
-  "759:1750": {
-    "inputs": {
-      "expression": "a * 0.5",
-      "values.a": [
-        "1796",
-        3
-      ]
-    },
-    "class_type": "ComfyMathExpression",
-    "_meta": {
-      "title": "* 0.5"
-    }
-  },
-  "759:1299": {
-    "inputs": {
-      "expression": "a * 0.5",
-      "values.a": [
-        "1796",
-        3
-      ]
-    },
-    "class_type": "ComfyMathExpression",
-    "_meta": {
-      "title": "* 0.5"
-    }
-  },
-  "759:1613": {
-    "inputs": {
-      "expression": "a * 0.5",
-      "values.a": [
-        "1796",
-        4
-      ]
-    },
-    "class_type": "ComfyMathExpression",
-    "_meta": {
-      "title": "* 0.5"
-    }
-  },
   "759:1071": {
     "inputs": {
-      "tile_size": 512,
+      "tile_size": "{{videoDecodeTileSize}}",
       "overlap": "{{videoDecodeOverlap}}",
-      "temporal_size": 2048,
+      "temporal_size": "{{videoDecodeTemporalSize}}",
       "temporal_overlap": "{{videoDecodeTemporalOverlap}}",
       "samples": [
         "759:1783",
@@ -989,7 +652,7 @@
     },
     "class_type": "VAEDecodeTiled",
     "_meta": {
-      "title": "VAE解码（分块）"
+      "title": "VAE 分块解码（12GB 低显存）"
     }
   },
   "759:1329": {
@@ -1051,7 +714,7 @@
         0
       ],
       "sampler": [
-        "759:1056",
+        "759:1057",
         0
       ],
       "sigmas": [

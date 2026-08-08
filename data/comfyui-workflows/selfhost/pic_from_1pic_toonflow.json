@@ -44,11 +44,11 @@
     "inputs": {
       "clip_name": "qwen_3_4b_fp8_mixed.safetensors",
       "type": "flux2",
-      "device": "default"
+      "device": "cpu"
     },
     "class_type": "CLIPLoader",
     "_meta": {
-      "title": "加载CLIP"
+      "title": "CLIP加载器（CPU低显存）"
     }
   },
   "75:72": {
@@ -79,22 +79,23 @@
   },
   "75:80": {
     "inputs": {
-      "upscale_method": "nearest-exact",
-      "megapixels": 1,
-      "resolution_steps": 1,
+      "upscale_method": "bicubic",
+      "width": "{{width}}",
+      "height": "{{height}}",
+      "crop": "center",
       "image": [
         "76",
         0
       ]
     },
-    "class_type": "ImageScaleToTotalPixels",
+    "class_type": "ImageScale",
     "_meta": {
-      "title": "缩放图像（像素）"
+      "title": "按 Toonflow 请求尺寸缩放"
     }
   },
   "75:62": {
     "inputs": {
-      "steps": 4,
+      "steps": 50,
       "width": [
         "75:99",
         0
@@ -120,18 +121,6 @@
     "class_type": "CLIPTextEncode",
     "_meta": {
       "title": "CLIP Text Encode (Positive Prompt)"
-    }
-  },
-  "75:82": {
-    "inputs": {
-      "conditioning": [
-        "75:74",
-        0
-      ]
-    },
-    "class_type": "ConditioningZeroOut",
-    "_meta": {
-      "title": "条件零化"
     }
   },
   "75:121": {
@@ -249,7 +238,7 @@
   },
   "75:63": {
     "inputs": {
-      "cfg": 1,
+      "cfg": 4,
       "model": [
         "75:70",
         0

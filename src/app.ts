@@ -12,11 +12,13 @@ import fs from "fs";
 import u from "@/utils";
 import jwt from "jsonwebtoken";
 import socketInit from "@/socket/index";
+import { dbReady } from "@/utils/db";
 
 const app = express();
 const server = http.createServer(app);
 
 export default async function startServe(randomPort: Boolean = false) {
+  await dbReady;
   await u.writeVersion();
   const io = new Server(server, { cors: { origin: "*" } });
   socketInit(io);

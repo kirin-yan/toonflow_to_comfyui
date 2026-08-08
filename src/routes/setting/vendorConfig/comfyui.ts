@@ -36,7 +36,8 @@ export default async function (req: Request, res: Response) {
         .map(file => ({
           name: path.basename(file, '.json'),
           fileName: file,
-          type: type
+          type: type,
+          content: fs.readFileSync(path.join(typePath, file), 'utf-8')
         }));
 
       workflows.push(...files);
