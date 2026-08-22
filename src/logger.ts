@@ -90,12 +90,13 @@ class Logger {
         this.writing = true;
         try {
           this.write(level, args);
+          // 保持 writing=true 调用原 console，避免 stdout/stderr 劫持再次写入同一条日志。
+          this.originalConsole[level]!(...args);
         } catch (err) {
           this.originalConsole.error?.("[Logger Error]", err);
+        } finally {
+          this.writing = false;
         }
-        this.writing = false;
-
-        this.originalConsole[level]!(...args);
       };
     }
 

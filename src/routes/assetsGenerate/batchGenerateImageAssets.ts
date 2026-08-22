@@ -148,16 +148,23 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
 
         await u.db("o_assets").where("id", item.id).update({ imageId });
       } catch (e: any) {
+        const reason = u.error(e).message;
+        console.error(
+          `[资产图片生成失败] assetId=${item.id} imageId=${imageId} name=${JSON.stringify(item.name)} type=${item.type} model=${model}: ${reason}`,
+          e instanceof Error ? e.stack : e,
+        );
         await u
           .db("o_image")
           .where("id", imageId)
-          .update({ state: "生成失败", errorReason: u.error(e).message });
+          .update({ state: "生成失败", errorReason: reason });
       }
     }),
   );
 
   // 后台执行，不等待结果
-  Promise.all(tasks).catch(() => {});
+  Promise.all(tasks).catch((e) => {
+    console.error(`[批量资产图片生成异常] projectId=${projectId} model=${model}: ${u.error(e).message}`, e);
+  });
 
   return res.status(200).send(success({ total: items.length }));
 });

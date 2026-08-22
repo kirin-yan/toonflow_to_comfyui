@@ -1,4 +1,4 @@
-// import "./logger";
+import "./logger";
 import "./err";
 import "./env";
 import express, { Request, Response, NextFunction } from "express";

@@ -6,6 +6,7 @@ import { validateFields } from "@/middleware/middleware";
 import { stepCountIs, tool } from "ai";
 import { o_script } from "@/types/database";
 import pLimit from "p-limit";
+import { db as knexDb } from "@/utils/db";
 
 const router = express.Router();
 
@@ -132,7 +133,7 @@ export default router.post(
 
       // 先删除本批 scriptId 的旧关联，再插入新的
       const uniqueRelations = [...new Map(scriptAssetRows.map((row) => [`${row.scriptId}:${row.assetId}`, row])).values()];
-      await u.db.transaction(async (trx) => {
+      await knexDb.transaction(async (trx) => {
         await trx("o_scriptAssets").whereIn("scriptId", batchScriptIds).delete();
         if (uniqueRelations.length) {
           await trx("o_scriptAssets").insert(uniqueRelations);

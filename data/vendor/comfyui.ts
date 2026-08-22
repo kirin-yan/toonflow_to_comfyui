@@ -569,6 +569,8 @@ const runWorkflow = async (
   const prompt = applyPlaceholders(workflow, replacements);
   removeEmptyOptionalImageBranches(prompt);
   assertNoUnresolvedPlaceholders(prompt);
+  const workflowNodeCount = Object.keys(prompt).length;
+  logger(`[ComfyUI][${expectedKind}] validating workflow: baseUrl=${getBaseUrl()}, nodes=${workflowNodeCount}`);
   try {
     const objectInfoResponse = await axios.get(`${getBaseUrl()}/object_info`, { timeout: 30000 });
     const objectInfo = objectInfoResponse?.data || {};
@@ -582,6 +584,7 @@ const runWorkflow = async (
     if (missingNodeTypes.length) {
       throw new Error(`ComfyUI is missing required custom nodes: ${missingNodeTypes.join(", ")}`);
     }
+    logger(`[ComfyUI][${expectedKind}] workflow node validation passed: nodes=${workflowNodeCount}`);
   } catch (error: any) {
     if (String(error?.message || "").startsWith("ComfyUI is missing")) throw error;
     throw new Error(`Unable to validate ComfyUI workflow nodes: ${error?.message || "object_info failed"}`);
@@ -602,20 +605,37 @@ const runWorkflow = async (
 
   const promptId = queueResponse?.data?.prompt_id;
   if (!promptId) {
+    logger(`[ComfyUI][${expectedKind}] queue failed: response=${JSON.stringify(queueResponse?.data ?? null)}`);
     throw new Error("ComfyUI did not return prompt_id");
   }
+  logger(`[ComfyUI][${expectedKind}] queued: prompt_id=${promptId}, number=${queueResponse?.data?.number ?? "unknown"}`);
 
   const pollInterval = parseInteger(vendor.inputValues.pollIntervalMs, 3000);
   const timeout = parseInteger(vendor.inputValues.timeoutMs, 1800000);
 
+  let lastStatus = "";
   const result = await pollTask(async () => {
     const historyResponse = await axios.get(`${getBaseUrl()}/history/${promptId}`);
     const record = getHistoryRecord(historyResponse?.data, promptId);
+    const status = String(record?.status?.status_str || (record?.status?.completed ? "completed" : "pending"));
+    if (status !== lastStatus) {
+      lastStatus = status;
+      logger(`[ComfyUI][${expectedKind}] status: prompt_id=${promptId}, status=${status}`);
+    }
     const error = extractHistoryError(record);
-    if (error) return { completed: true, error };
+    if (error) {
+      logger(`[ComfyUI][${expectedKind}] workflow error: prompt_id=${promptId}, error=${error}`);
+      return { completed: true, error };
+    }
     const output = extractOutputDescriptor(record, expectedKind);
-    if (output) return { completed: true, data: JSON.stringify(output) };
+    if (output) {
+      logger(
+        `[ComfyUI][${expectedKind}] output ready: prompt_id=${promptId}, filename=${output.filename}, subfolder=${output.subfolder || ""}, type=${output.type}`,
+      );
+      return { completed: true, data: JSON.stringify(output) };
+    }
     if (record?.status?.completed === true) {
+      logger(`[ComfyUI][${expectedKind}] completed without expected output: prompt_id=${promptId}`);
       return { completed: true, error: `ComfyUI workflow finished without an expected ${expectedKind} output` };
     }
     return { completed: false };
@@ -630,12 +650,15 @@ const runWorkflow = async (
         logger(`[ComfyUI] failed to cancel timed out prompt ${promptId}: ${cancelError?.message || "cancel failed"}`);
       }
     }
+    logger(`[ComfyUI][${expectedKind}] failed: prompt_id=${promptId}, error=${result.error}`);
     throw new Error(result.error === "timeout" ? `ComfyUI workflow timed out and was cancelled: ${promptId}` : result.error);
   }
   if (!result.data) throw new Error("ComfyUI workflow finished without a downloadable output");
 
   const file = JSON.parse(result.data);
-  return await urlToBase64(getViewUrl(file));
+  const output = await urlToBase64(getViewUrl(file));
+  logger(`[ComfyUI][${expectedKind}] success: prompt_id=${promptId}, filename=${file.filename}, encodedLength=${output.length}`);
+  return output;
 };
 
 const buildCommonReplacements = (prompt: string, aspectRatio: string, extras: Record<string, any> = {}) => {
@@ -721,67 +744,81 @@ const textRequest = () => {
 };
 
 const imageRequest = async (config: ImageConfig, model: ImageModel): Promise<string> => {
-  await assertComfyReady();
-  const references = config.referenceList || [];
-  if (config.size && config.size !== "1K") {
-    throw new Error(`This selfhost profile supports 1K images on a 12GB GPU; received ${config.size}`);
+  try {
+    await assertComfyReady();
+    const references = config.referenceList || [];
+    if (config.size && config.size !== "1K") {
+      throw new Error(`This selfhost profile supports 1K images on a 12GB GPU; received ${config.size}`);
+    }
+    if (references.length > 3) {
+      throw new Error(`ComfyUI multi-reference image workflow supports at most 3 images; received ${references.length}`);
+    }
+    const useReferenceWorkflow = references.length > 0;
+    const workflow = await getWorkflow("image", useReferenceWorkflow, references.length);
+    const uploadedReferences = await uploadReferences(references);
+    const { width, height } = getImageDimensions(config.size, config.aspectRatio);
+    const replacements = buildCommonReplacements(config.prompt, config.aspectRatio, {
+      modelName: model.modelName,
+      size: config.size,
+      width,
+      height,
+      hasReference: uploadedReferences.length > 0,
+    });
+    addReferenceReplacements(replacements, uploadedReferences);
+    logger(
+      `[ComfyUI][image] request: model=${model.modelName}, workflow=${useReferenceWorkflow ? "reference" : "text"}, references=${uploadedReferences.length}, size=${config.size}, dimensions=${width}x${height}`,
+    );
+    return await runWorkflow(workflow, replacements, "image");
+  } catch (error: any) {
+    logger(`[ComfyUI][image] request failed: model=${model.modelName}, error=${error?.message || String(error)}`);
+    throw error;
   }
-  if (references.length > 3) {
-    throw new Error(`ComfyUI multi-reference image workflow supports at most 3 images; received ${references.length}`);
-  }
-  const useReferenceWorkflow = references.length > 0;
-  const workflow = await getWorkflow("image", useReferenceWorkflow, references.length);
-  const uploadedReferences = await uploadReferences(references);
-  const { width, height } = getImageDimensions(config.size, config.aspectRatio);
-  const replacements = buildCommonReplacements(config.prompt, config.aspectRatio, {
-    modelName: model.modelName,
-    size: config.size,
-    width,
-    height,
-    hasReference: uploadedReferences.length > 0,
-  });
-  addReferenceReplacements(replacements, uploadedReferences);
-  logger(`[ComfyUI] image request with ${uploadedReferences.length} reference(s)`);
-  return await runWorkflow(workflow, replacements, "image");
 };
 
 const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<string> => {
-  await assertComfyReady();
-  const references = config.referenceList || [];
-  const resolution = config.resolution || "480p";
-  const maxDuration = resolution === "480p" ? 5 : resolution === "720p" ? 3 : 0;
-  if (!maxDuration) {
-    throw new Error(`This selfhost profile supports only 480p and 720p video; received ${resolution}`);
+  try {
+    await assertComfyReady();
+    const references = config.referenceList || [];
+    const resolution = config.resolution || "480p";
+    const maxDuration = resolution === "480p" ? 5 : resolution === "720p" ? 3 : 0;
+    if (!maxDuration) {
+      throw new Error(`This selfhost profile supports only 480p and 720p video; received ${resolution}`);
+    }
+    if (!Number.isInteger(config.duration) || config.duration < 1 || config.duration > maxDuration) {
+      throw new Error(`This selfhost profile supports ${resolution} video durations from 1 to ${maxDuration} seconds`);
+    }
+    const useReferenceWorkflow = references.length > 0;
+    const workflow = await getWorkflow("video", useReferenceWorkflow);
+    const uploadedReferences = await uploadReferences(references);
+    const normalizedMode = normalizeMode(config.mode);
+    const fallbackFps = parseInteger(vendor.inputValues.videoFps, 24);
+    const fps = useReferenceWorkflow
+      ? parseInteger(vendor.inputValues.videoReferenceFps, fallbackFps)
+      : parseInteger(vendor.inputValues.videoTextFps, fallbackFps);
+    const { width, height } = getVideoDimensions(resolution, config.aspectRatio || "16:9");
+    const requestedFrames = Math.max(1, Math.round((config.duration || 0) * fps));
+    const frames = Math.floor(requestedFrames / 8) * 8 + 1;
+    const replacements = buildCommonReplacements(config.prompt, config.aspectRatio, {
+      modelName: model.modelName,
+      duration: config.duration,
+      resolution,
+      width,
+      height,
+      fps,
+      frames,
+      audio: config.audio === true,
+      hasReference: uploadedReferences.length > 0,
+      mode: normalizedMode.length === 1 ? normalizedMode[0] : JSON.stringify(normalizedMode),
+    });
+    addReferenceReplacements(replacements, uploadedReferences);
+    logger(
+      `[ComfyUI][video] request: model=${model.modelName}, workflow=${useReferenceWorkflow ? "reference" : "text"}, references=${uploadedReferences.length}, resolution=${resolution}, duration=${config.duration}, fps=${fps}, frames=${frames}, dimensions=${width}x${height}`,
+    );
+    return await runWorkflow(workflow, replacements, "video");
+  } catch (error: any) {
+    logger(`[ComfyUI][video] request failed: model=${model.modelName}, error=${error?.message || String(error)}`);
+    throw error;
   }
-  if (!Number.isInteger(config.duration) || config.duration < 1 || config.duration > maxDuration) {
-    throw new Error(`This selfhost profile supports ${resolution} video durations from 1 to ${maxDuration} seconds`);
-  }
-  const useReferenceWorkflow = references.length > 0;
-  const workflow = await getWorkflow("video", useReferenceWorkflow);
-  const uploadedReferences = await uploadReferences(references);
-  const normalizedMode = normalizeMode(config.mode);
-  const fallbackFps = parseInteger(vendor.inputValues.videoFps, 24);
-  const fps = useReferenceWorkflow
-    ? parseInteger(vendor.inputValues.videoReferenceFps, fallbackFps)
-    : parseInteger(vendor.inputValues.videoTextFps, fallbackFps);
-  const { width, height } = getVideoDimensions(resolution, config.aspectRatio || "16:9");
-  const requestedFrames = Math.max(1, Math.round((config.duration || 0) * fps));
-  const frames = Math.floor(requestedFrames / 8) * 8 + 1;
-  const replacements = buildCommonReplacements(config.prompt, config.aspectRatio, {
-    modelName: model.modelName,
-    duration: config.duration,
-    resolution,
-    width,
-    height,
-    fps,
-    frames,
-    audio: config.audio === true,
-    hasReference: uploadedReferences.length > 0,
-    mode: normalizedMode.length === 1 ? normalizedMode[0] : JSON.stringify(normalizedMode),
-  });
-  addReferenceReplacements(replacements, uploadedReferences);
-  logger(`[ComfyUI] video request with ${uploadedReferences.length} reference(s)`);
-  return await runWorkflow(workflow, replacements, "video");
 };
 
 const ttsRequest = async (): Promise<string> => {
