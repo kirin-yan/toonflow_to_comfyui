@@ -4,6 +4,7 @@ import { z } from "zod";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import axios from "axios";
+import { normalizeComfyModelId } from "@/utils/normalizeModelId";
 const router = express.Router();
 
 async function urlToBase64(imageUrl: string): Promise<string> {
@@ -23,7 +24,8 @@ export default router.post(
     projectId: z.number(),
   }),
   async (req, res) => {
-    const { model, references = [], quality, ratio, prompt, projectId } = req.body;
+    const { model: requestedModel, references = [], quality, ratio, prompt, projectId } = req.body;
+    const model = normalizeComfyModelId(requestedModel) as `${string}:${string}`;
     const generationQuality = model.startsWith("comfyui:") ? "1K" : quality;
 
     const imageClass = await u.Ai.Image(model).run(

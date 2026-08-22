@@ -4,6 +4,7 @@ import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
+import { normalizeComfyModelId } from "@/utils/normalizeModelId";
 
 const router = express.Router();
 
@@ -72,7 +73,8 @@ const requestSchema = {
 };
 
 export default router.post("/", validateFields(requestSchema), async (req, res) => {
-  const { projectId, model, resolution, id, type, name, prompt, base64 } = req.body;
+  const { projectId, model: requestedModel, resolution, id, type, name, prompt, base64 } = req.body;
+  const model = normalizeComfyModelId(requestedModel) as `${string}:${string}`;
   const generationResolution = model.startsWith("comfyui:") ? "1K" : resolution;
 
   // 1. 查询项目 & 获取类型配置

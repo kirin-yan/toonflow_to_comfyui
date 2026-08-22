@@ -3,6 +3,7 @@ import u from "@/utils";
 import { z } from "zod";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
+import { normalizeComfyModelId } from "@/utils/normalizeModelId";
 const router = express.Router();
 
 // 新增项目
@@ -23,7 +24,9 @@ export default router.post(
   }),
   async (req, res) => {
     const { projectType, name, intro, type, directorManual, artStyle, videoRatio, imageModel, videoModel, imageQuality, mode } = req.body;
-    const effectiveImageQuality = imageModel.startsWith("comfyui:") ? "1K" : imageQuality;
+    const effectiveImageModel = normalizeComfyModelId(imageModel);
+    const effectiveVideoModel = normalizeComfyModelId(videoModel);
+    const effectiveImageQuality = effectiveImageModel.startsWith("comfyui:") ? "1K" : imageQuality;
 
     await u.db("o_project").insert({
       id: Date.now(),
@@ -35,8 +38,8 @@ export default router.post(
       videoRatio,
       directorManual,
       userId: 1,
-      imageModel,
-      videoModel,
+      imageModel: effectiveImageModel,
+      videoModel: effectiveVideoModel,
       createTime: Date.now(),
       imageQuality: effectiveImageQuality,
       mode,

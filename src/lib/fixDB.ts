@@ -3,6 +3,7 @@ import path from "path";
 import fs from "fs";
 import { Knex } from "knex";
 import { transform } from "sucrase";
+import { normalizeComfyModelId } from "@/utils/normalizeModelId";
 
 export default async (knex: Knex): Promise<void> => {
   const addColumn = async (table: string, column: string, type: string) => {
@@ -54,9 +55,6 @@ export default async (knex: Knex): Promise<void> => {
   });
   // 兼容旧版本的视频成功状态，后续统一使用“已完成”。
   await knex("o_video").where("state", "生成成功").update({ state: "已完成" });
-  // 12GB selfhost ComfyUI 配置只支持 1K，修正旧项目中遗留的 2K/4K 设置。
-  await knex("o_project").where("imageModel", "like", "comfyui:%").whereNot("imageQuality", "1K").update({ imageQuality: "1K" });
-
   // 添加新字段
   await addColumn("o_prompt", "useData", "text");
 
@@ -135,6 +133,32 @@ resultTool 参数：
       if (tsCode) await tempOnsert(knex, tsCode);
     }
   }
+
+  // 旧测试 Vendor 没有注入 selfhost 工作流。迁移项目到正式 ComfyUI，并隐藏测试 Vendor。
+  const legacyComfyProjects = await knex("o_project")
+    .where("imageModel", "like", "comfyuitest:%")
+    .orWhere("videoModel", "like", "comfyuitest:%")
+    .select("id", "imageModel", "videoModel");
+  const legacyComfyVendor = await knex("o_vendorConfig").where("id", "comfyuitest").first();
+  for (const project of legacyComfyProjects) {
+    await knex("o_project")
+      .where("id", project.id)
+      .update({
+        imageModel: normalizeComfyModelId(project.imageModel ?? ""),
+        videoModel: normalizeComfyModelId(project.videoModel ?? ""),
+      });
+  }
+  if (legacyComfyProjects.length > 0 || legacyComfyVendor?.enable) {
+    await knex("o_vendorConfig").where("id", "comfyui").update({ enable: 1 });
+  }
+  if (legacyComfyVendor) {
+    await knex("o_vendorConfig").where("id", "comfyuitest").update({ enable: 0 });
+  }
+  if (legacyComfyProjects.length > 0) {
+    console.log(`[修复数据库] 已将 ${legacyComfyProjects.length} 个项目从 comfyuitest 迁移到 comfyui`);
+  }
+  // 12GB selfhost ComfyUI 配置只支持 1K，修正新旧项目中遗留的 2K/4K 设置。
+  await knex("o_project").where("imageModel", "like", "comfyui:%").whereNot("imageQuality", "1K").update({ imageQuality: "1K" });
 
   // 兼容旧版本配置，并为 ComfyUI 补齐 selfhost 工作流。
   // HTTP URL 类型的自定义工作流保持不变；内嵌 JSON 跟随本地 selfhost 文件更新。

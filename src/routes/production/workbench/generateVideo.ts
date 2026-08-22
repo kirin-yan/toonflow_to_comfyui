@@ -4,6 +4,7 @@ import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
+import { normalizeComfyModelId } from "@/utils/normalizeModelId";
 const router = express.Router();
 
 function parseRequestedMode(mode: string): string | string[] {
@@ -62,7 +63,8 @@ export default router.post(
     trackId: z.number(),
   }),
   async (req, res) => {
-    const { scriptId, projectId, prompt, uploadData, model, duration, resolution, audio, mode, trackId } = req.body;
+    const { scriptId, projectId, prompt, uploadData, model: requestedModel, duration, resolution, audio, mode, trackId } = req.body;
+    const model = normalizeComfyModelId(requestedModel) as `${string}:${string}`;
     const separatorIndex = model.indexOf(":");
     if (separatorIndex <= 0 || separatorIndex === model.length - 1) {
       return res.status(400).send({ code: 400, data: null, message: `视频模型格式错误：${model}` });

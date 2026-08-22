@@ -3,6 +3,7 @@ import { devToolsMiddleware } from "@ai-sdk/devtools";
 import axios from "axios";
 import { transform } from "sucrase";
 import u from "@/utils";
+import { normalizeComfyModelId } from "@/utils/normalizeModelId";
 
 type AiType = "scriptAgent" | "productionAgent" | "universalAi";
 type FnName = "textRequest" | "imageRequest" | "videoRequest" | "ttsRequest";
@@ -12,9 +13,9 @@ async function resolveModelName(value: AiType | `${string}:${string}`): Promise<
   if (AiTypeValues.includes(value as AiType)) {
     const agentDeployData = await u.db("o_agentDeploy").where("key", value).first();
     if (!agentDeployData?.modelName) throw new Error(`${value}模型未配置`);
-    return agentDeployData.modelName as `${number}:${string}`;
+    return normalizeComfyModelId(agentDeployData.modelName) as `${string}:${string}`;
   }
-  return value as `${number}:${string}`;
+  return normalizeComfyModelId(value) as `${string}:${string}`;
 }
 
 async function getVendorTemplateFn(

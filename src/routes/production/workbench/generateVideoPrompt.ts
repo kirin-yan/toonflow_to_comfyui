@@ -3,6 +3,7 @@ import u from "@/utils";
 import { z } from "zod";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
+import { normalizeComfyModelId } from "@/utils/normalizeModelId";
 const router = express.Router();
 
 function escapePromptAttribute(value: unknown): string {
@@ -27,7 +28,8 @@ export default router.post(
     model: z.string(),
   }),
   async (req, res) => {
-    const { trackId, projectId, info, model } = req.body;
+    const { trackId, projectId, info, model: requestedModel } = req.body;
+    const model = normalizeComfyModelId(requestedModel);
     //查询参数
     const images = await Promise.all(
       info.map(async (item: { id: number; sources: string }) => {
