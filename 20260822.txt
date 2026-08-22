@@ -1,0 +1,24 @@
+[extractAssets] group=[2] 提取失败: TypeError: import_utils.default.db.transaction is not a function
+    at persistGroupResult (C:\AI_Tools\toonflow_to_comfyui\src\routes\script\extractAssets.ts:135:18)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (C:\AI_Tools\toonflow_to_comfyui\src\routes\script\extractAssets.ts:236:13)
+POST /api/script/pollScriptAssets 200 1.646 ms - 137
+
+
+POST /api/assets/pollingPromptAssets 200 1.393 ms - 2052
+ Line:36 🍎 assets2AudioData []
+POST /api/cornerScape/getAllAssets 200 5.394 ms - 7022
+POST /api/assetsGenerate/batchGenerateImageAssets 200 10.491 ms - 50
+POST /api/assets/pollingImageAssets 200 1.731 ms - 88
+ Line:36 🍎 assets2AudioData []
+POST /api/cornerScape/getAllAssets 200 5.738 ms - 7054
+ Line:36 🍎 assets2AudioData []
+POST /api/cornerScape/getAllAssets 200 3.391 ms - 2200
+ Line:36 🍎 assets2AudioData []
+POST /api/cornerScape/getAllAssets 200 6.077 ms - 7054
+ Line:36 🍎 assets2AudioData []
+POST /api/cornerScape/getAllAssets 200 2.865 ms - 2200
+ Line:36 🍎 assets2AudioData []
+POST /api/cornerScape/getAllAssets 200 6.167 ms - 7054
+POST /api/modelSelect/getModelList 200 70.011 ms - 150
+
