@@ -15,11 +15,11 @@ export default router.post(
     concurrentCount: z.number().min(1).optional(),
   }),
   async (req, res) => {
-    const { projectId, novelIds, concurrentCount = 5 } = req.body;
+    const { projectId, novelIds, concurrentCount = 1 } = req.body;
 
     const [allChapters, novel] = await Promise.all([
       u.db("o_novel").where("projectId", projectId).whereIn("id", novelIds),
-      Promise.resolve(new u.cleanNovel(concurrentCount)),
+      Promise.resolve(new u.cleanNovel(Math.min(concurrentCount, 1))),
     ]);
     if (allChapters.length === 0) {
       return res.status(400).send(success("没有对应章节"));
@@ -31,7 +31,10 @@ export default router.post(
         .where("id", item.id)
         .update({ event: item.event, eventState: item.event ? 1 : -1, errorReason: item?.errorReason ?? null });
     });
-    novel.start(allChapters, projectId);
+    void novel.start(allChapters, projectId).catch(async (err) => {
+      const reason = u.error(err).message;
+      await u.db("o_novel").where("projectId", projectId).whereIn("id", novelIds).where("eventState", 0).update({ eventState: -1, errorReason: reason });
+    });
 
     return res.status(200).send(success("生成事件成功"));
   },

@@ -17,7 +17,7 @@ export default router.post(
     concurrentCount: z.number().min(1).optional(),
   }),
   async (req, res) => {
-    const { assetIds, projectId, scriptId, concurrentCount = 5 } = req.body;
+    const { assetIds, projectId, scriptId, concurrentCount = 1 } = req.body;
 
     const projectSettingData = await u.db("o_project").where("id", projectId).select("imageModel", "imageQuality", "artStyle").first();
 
@@ -80,6 +80,7 @@ export default router.post(
       const imageId = imageIdMap[item.id!];
       const typeConfig = promptRecord[item.type!] || promptRecord["role"];
 
+      try {
       const { text } = await u.Ai.Text("universalAi").invoke({
         system: `${typeConfig.prompt}`,
         messages: [
@@ -93,7 +94,6 @@ export default router.post(
       });
 
       const imageBase64 = imageUrlRecord[item.assetsId!] ? await urlToBase64(imageUrlRecord[item.assetsId!]) : null;
-      try {
         const repeloadObj = {
           prompt: text,
           size: projectSettingData?.imageQuality as "1K" | "2K" | "4K",
@@ -134,8 +134,9 @@ export default router.post(
     };
 
     // 按 concurrentCount 分批并发执行
-    for (let i = 0; i < assetsDataArr.length; i += concurrentCount) {
-      const batch = assetsDataArr.slice(i, i + concurrentCount);
+    const effectiveConcurrency = projectSettingData?.imageModel?.startsWith("comfyui:") ? 1 : concurrentCount;
+    for (let i = 0; i < assetsDataArr.length; i += effectiveConcurrency) {
+      const batch = assetsDataArr.slice(i, i + effectiveConcurrency);
       const batchResults = await Promise.all(batch.map(generateSingleAsset));
       imageData.push(...batchResults);
     }

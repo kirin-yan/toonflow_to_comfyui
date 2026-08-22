@@ -37,14 +37,18 @@ export default router.post(
   }),
   async (req, res) => {
     const { projectId, scriptId } = req.body;
-    const projectData = await u.db("o_project").where("id", projectId).select("id", "videoModel").first();
+    const projectData = await u.db("o_project").where("id", projectId).select("id", "videoModel", "mode").first();
     if (!projectData?.videoModel) {
       return res.status(400).json(success("项目未配置视频模型"));
     }
     const [videoId, videoModelName] = projectData.videoModel.split(":");
     const models = await u.vendor.getModelList(videoId);
     const findData = models.find((i: any) => i.modelName == videoModelName);
-    const isRef = findData.mode.every((i: any) => Array.isArray(i));
+    if (!findData) {
+      return res.status(400).send({ code: 400, data: null, message: `项目配置的视频模型不可用：${projectData.videoModel}` });
+    }
+    const configuredMode = String(projectData.mode ?? "").trim();
+    const isRef = configuredMode.startsWith("[") || (configuredMode === "" && findData.mode.some((i: any) => Array.isArray(i)));
 
     const storyboardList = await u.db("o_storyboard").where({ scriptId, projectId }).orderBy("index", "asc");
     await Promise.all(
@@ -142,7 +146,14 @@ export default router.post(
             .map(async (v) => ({
               id: v.id!,
               src: v.filePath ? await u.oss.getFileUrl(v.filePath) : "",
-              state: v.state === "已完成" ? "已完成" : v.state === "生成中" ? "生成中" : v.state === "生成失败" ? "生成失败" : "未生成",
+              state:
+                v.state === "已完成" || v.state === "生成成功"
+                  ? "已完成"
+                  : v.state === "生成中"
+                    ? "生成中"
+                    : v.state === "生成失败"
+                      ? "生成失败"
+                      : "未生成",
             })),
         ),
       });

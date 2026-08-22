@@ -55,12 +55,14 @@ export default router.post(
       }
       const reqConfig = requestFn[type as "text" | "video" | "image"];
 
+      let toolCalled = false;
       const getWeatherTool = tool({
         description: "Get the weather in a location",
         inputSchema: z.object({
           location: z.string().describe("The location to get the weather for"),
         }),
         execute: async ({ location }) => {
+          toolCalled = true;
           return {
             location,
             temperature: 72 + Math.floor(Math.random() * 21) - 10,
@@ -77,6 +79,7 @@ export default router.post(
         for await (const chunk of textStream) {
           fullResponse += chunk;
         }
+        if (!toolCalled) return res.status(500).send(error("模型能返回文本，但未执行工具调用；ScriptAgent 和资产提取将无法可靠工作"));
         if (!fullResponse) return res.status(500).send(error("模型未返回结果"));
         res.status(200).send(success(fullResponse));
       } else {

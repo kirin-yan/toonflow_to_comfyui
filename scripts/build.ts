@@ -19,6 +19,8 @@ const external = [
   "sharp",
   "mysql",
   "mysql2",
+  "mariadb",
+  "mariadb/callback",
   "pg",
   "pg-query-stream",
   "oracledb",

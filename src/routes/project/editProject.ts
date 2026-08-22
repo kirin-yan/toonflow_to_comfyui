@@ -24,6 +24,7 @@ export default router.post(
   }),
   async (req, res) => {
     const { id, name, intro, type, artStyle, videoRatio, directorManual, imageModel, videoModel, imageQuality, projectType, mode } = req.body;
+    const effectiveImageQuality = imageModel.startsWith("comfyui:") ? "1K" : imageQuality;
 
     await u.db("o_project").where("id", id).update({
       name,
@@ -34,7 +35,7 @@ export default router.post(
       directorManual,
       imageModel,
       videoModel,
-      imageQuality,
+      imageQuality: effectiveImageQuality,
       projectType,
       mode,
     });

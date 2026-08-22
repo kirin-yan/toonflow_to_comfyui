@@ -13,6 +13,12 @@ export default router.post(
     data: z.object({
       storySkeleton: z.string(),
       adaptationStrategy: z.string(),
+      script: z.array(
+        z.object({
+          name: z.string().trim().min(1),
+          content: z.string().trim().min(1),
+        }),
+      ),
     }),
   }),
   async (req, res) => {

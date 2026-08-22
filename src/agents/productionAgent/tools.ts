@@ -63,6 +63,34 @@ interface ToolConfig {
   msg: ReturnType<ResTool["newMessage"]>;
 }
 
+const socketAckTimeout = 60_000;
+const generationTimeout = 60 * 60_000;
+
+function emitWithTimeout<T>(socket: ResTool["socket"], event: string, payload: unknown): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${event} 请求超时，前端没有响应`)), socketAckTimeout);
+    socket.emit(event, payload, (response: T) => {
+      clearTimeout(timer);
+      resolve(response);
+    });
+  });
+}
+
+async function waitForGeneration(
+  label: string,
+  loadStates: () => Promise<Array<{ id: number; state?: string | null; errorReason?: string | null; reason?: string | null }>>,
+) {
+  const deadline = Date.now() + generationTimeout;
+  while (Date.now() < deadline) {
+    const rows = await loadStates();
+    const failed = rows.find((item) => item.state === "生成失败");
+    if (failed) throw new Error(`${label} ID ${failed.id} 生成失败：${failed.errorReason || failed.reason || "未知错误"}`);
+    if (rows.length > 0 && rows.every((item) => item.state === "已完成")) return rows;
+    await new Promise((resolve) => setTimeout(resolve, 3_000));
+  }
+  throw new Error(`${label}生成等待超过 60 分钟，请检查 ComfyUI 队列和服务日志`);
+}
+
 export default (toolCpnfig: ToolConfig) => {
   const { resTool, toolsNames, msg } = toolCpnfig;
   const { socket } = resTool;
@@ -151,19 +179,26 @@ export default (toolCpnfig: ToolConfig) => {
       }),
       execute: async ({ ids }) => {
         const thinking = msg.thinking("正在生成衍生资产...");
-        new Promise((resolve) => socket.emit("generateDeriveAsset", { ids }, (res: any) => resolve(res)))
-          .then((res) => {
-            thinking.appendText(`已生成衍生资产，ID: ${JSON.stringify(res, null, 2)}\n`);
-            thinking.updateTitle("衍生资产开始完成");
-            thinking.complete();
-          })
-          .catch((e) => {
-            thinking.appendText("衍生资产生成失败:\n" + u.error(e).message);
-            thinking.updateTitle("衍生资产生成失败");
-            thinking.complete();
-          });
-
-        return "开始生成衍生资产";
+        try {
+          const result: any = await emitWithTimeout(socket, "generateDeriveAsset", { ids });
+          if (result?.error) throw new Error(result.error);
+          await waitForGeneration("衍生资产", () =>
+            u
+              .db("o_assets")
+              .whereIn("o_assets.id", ids)
+              .leftJoin("o_image", "o_assets.imageId", "o_image.id")
+              .select("o_assets.id", "o_image.state", "o_image.errorReason"),
+          );
+          thinking.appendText(`衍生资产生成结果: ${JSON.stringify(result, null, 2)}\n`);
+          thinking.updateTitle("衍生资产生成完成");
+          thinking.complete();
+          return result ?? "衍生资产生成完成";
+        } catch (e) {
+          thinking.appendText("衍生资产生成失败:\n" + u.error(e).message);
+          thinking.updateTitle("衍生资产生成失败");
+          thinking.complete();
+          throw e;
+        }
       },
     }),
     generate_storyboard: tool({
@@ -173,19 +208,22 @@ export default (toolCpnfig: ToolConfig) => {
       }),
       execute: async ({ ids }) => {
         const thinking = msg.thinking("正在生成分镜...");
-        new Promise((resolve) => socket.emit("generateStoryboard", { ids }, (res: any) => resolve(res)))
-          .then((res) => {
-            thinking.appendText("生成的分镜数据:\n" + JSON.stringify(res, null, 2));
-            thinking.updateTitle("分镜生成完成");
-            thinking.complete();
-          })
-          .catch((e) => {
-            thinking.appendText("分镜生成失败:\n" + u.error(e).message);
-            thinking.updateTitle("分镜生成失败");
-            thinking.complete();
-          });
-
-        return "开始生成分镜";
+        try {
+          const result: any = await emitWithTimeout(socket, "generateStoryboard", { ids });
+          if (result?.error) throw new Error(result.error);
+          await waitForGeneration("分镜", () =>
+            u.db("o_storyboard").whereIn("id", ids).select("id", "state", "reason"),
+          );
+          thinking.appendText("生成的分镜数据:\n" + JSON.stringify(result, null, 2));
+          thinking.updateTitle("分镜生成完成");
+          thinking.complete();
+          return result ?? "分镜生成完成";
+        } catch (e) {
+          thinking.appendText("分镜生成失败:\n" + u.error(e).message);
+          thinking.updateTitle("分镜生成失败");
+          thinking.complete();
+          throw e;
+        }
       },
     }),
   };

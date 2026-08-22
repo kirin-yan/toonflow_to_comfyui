@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "fs/promises";
+import { mkdir, readFile, writeFile } from "fs/promises";
 import getPath from "@/utils/getPath";
 import fs from "fs";
 import path from "path";
@@ -49,6 +49,7 @@ export { db };
 async function initKnexType(knexDb: any) {
   const { Client } = await import("@rmp135/sql-ts");
   const outFile = "src/types/database.d.ts";
+  await mkdir(path.dirname(outFile), { recursive: true });
   const dbClient = Client.fromConfig({
     interfaceNameFormat: "${table}",
     typeMap: {

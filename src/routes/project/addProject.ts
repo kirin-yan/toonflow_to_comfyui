@@ -23,6 +23,7 @@ export default router.post(
   }),
   async (req, res) => {
     const { projectType, name, intro, type, directorManual, artStyle, videoRatio, imageModel, videoModel, imageQuality, mode } = req.body;
+    const effectiveImageQuality = imageModel.startsWith("comfyui:") ? "1K" : imageQuality;
 
     await u.db("o_project").insert({
       id: Date.now(),
@@ -37,7 +38,7 @@ export default router.post(
       imageModel,
       videoModel,
       createTime: Date.now(),
-      imageQuality,
+      imageQuality: effectiveImageQuality,
       mode,
     });
 

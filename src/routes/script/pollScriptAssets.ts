@@ -12,7 +12,7 @@ export default router.post(
   }),
   async (req, res) => {
     const { ids } = req.body;
-    const data = await u.db("o_script").whereIn("id", ids).whereNot("extractState", "生成中").select("id", "extractState", "errorReason");
+    const data = await u.db("o_script").whereIn("id", ids).whereIn("extractState", [1, -1]).select("id", "extractState", "errorReason");
     res.status(200).send(success(data));
   },
 );

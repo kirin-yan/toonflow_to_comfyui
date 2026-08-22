@@ -260,6 +260,14 @@ const fallbackMimeByType: Record<ReferenceList["type"], string> = {
 
 const getBaseUrl = () => (vendor.inputValues.baseUrl || "http://127.0.0.1:8000").replace(/\/+$/, "");
 
+const assertComfyReady = async () => {
+  try {
+    await axios.get(`${getBaseUrl()}/system_stats`, { timeout: 10000 });
+  } catch (error: any) {
+    throw new Error(`ComfyUI is not ready at ${getBaseUrl()}: ${error?.message || "connection failed"}`);
+  }
+};
+
 const parseInteger = (value: string | undefined, fallback: number) => {
   const parsed = Number.parseInt(String(value ?? "").trim(), 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
@@ -561,6 +569,23 @@ const runWorkflow = async (
   const prompt = applyPlaceholders(workflow, replacements);
   removeEmptyOptionalImageBranches(prompt);
   assertNoUnresolvedPlaceholders(prompt);
+  try {
+    const objectInfoResponse = await axios.get(`${getBaseUrl()}/object_info`, { timeout: 30000 });
+    const objectInfo = objectInfoResponse?.data || {};
+    const missingNodeTypes = Array.from(
+      new Set(
+        Object.values(prompt)
+          .map((node: any) => node?.class_type)
+          .filter((classType: any) => classType && !objectInfo[classType]),
+      ),
+    );
+    if (missingNodeTypes.length) {
+      throw new Error(`ComfyUI is missing required custom nodes: ${missingNodeTypes.join(", ")}`);
+    }
+  } catch (error: any) {
+    if (String(error?.message || "").startsWith("ComfyUI is missing")) throw error;
+    throw new Error(`Unable to validate ComfyUI workflow nodes: ${error?.message || "object_info failed"}`);
+  }
   logger(`[ComfyUI] queue prompt`);
   const queueResponse = await axios.post(
     `${getBaseUrl()}/prompt`,
@@ -596,7 +621,17 @@ const runWorkflow = async (
     return { completed: false };
   }, pollInterval, timeout);
 
-  if (result.error) throw new Error(result.error);
+  if (result.error) {
+    if (result.error === "timeout") {
+      try {
+        await axios.post(`${getBaseUrl()}/queue`, { delete: [promptId] });
+        await axios.post(`${getBaseUrl()}/interrupt`, {});
+      } catch (cancelError: any) {
+        logger(`[ComfyUI] failed to cancel timed out prompt ${promptId}: ${cancelError?.message || "cancel failed"}`);
+      }
+    }
+    throw new Error(result.error === "timeout" ? `ComfyUI workflow timed out and was cancelled: ${promptId}` : result.error);
+  }
   if (!result.data) throw new Error("ComfyUI workflow finished without a downloadable output");
 
   const file = JSON.parse(result.data);
@@ -686,6 +721,7 @@ const textRequest = () => {
 };
 
 const imageRequest = async (config: ImageConfig, model: ImageModel): Promise<string> => {
+  await assertComfyReady();
   const references = config.referenceList || [];
   if (config.size && config.size !== "1K") {
     throw new Error(`This selfhost profile supports 1K images on a 12GB GPU; received ${config.size}`);
@@ -710,6 +746,7 @@ const imageRequest = async (config: ImageConfig, model: ImageModel): Promise<str
 };
 
 const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<string> => {
+  await assertComfyReady();
   const references = config.referenceList || [];
   const resolution = config.resolution || "480p";
   const maxDuration = resolution === "480p" ? 5 : resolution === "720p" ? 3 : 0;

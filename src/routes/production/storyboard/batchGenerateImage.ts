@@ -23,7 +23,7 @@ export default router.post(
       storyboardIds,
       projectId,
       scriptId,
-      concurrentCount = 5,
+      concurrentCount = 1,
     }: {
       storyboardIds: number[];
       projectId: number;
@@ -87,7 +87,7 @@ export default router.post(
       await u.Ai.Image(projectSettingData?.imageModel as `${string}:${string}`)
         .run(
           {
-            referenceList: await getAssetsImageBase64(assetRecord[item.id!] || []),
+            referenceList: (await getAssetsImageBase64(assetRecord[item.id!] || [])).slice(0, 3),
             ...repeloadObj,
           },
           {
@@ -119,8 +119,9 @@ export default router.post(
 
     // 按 concurrentCount 控制并发数，分批执行；跳过 shouldGenerateImage === 0 的分镜
     const generateList = storyboardData.filter((item) => item.shouldGenerateImage !== 0);
-    for (let i = 0; i < generateList.length; i += concurrentCount) {
-      const batch = generateList.slice(i, i + concurrentCount);
+    const effectiveConcurrency = projectSettingData?.imageModel?.startsWith("comfyui:") ? 1 : concurrentCount;
+    for (let i = 0; i < generateList.length; i += effectiveConcurrency) {
+      const batch = generateList.slice(i, i + effectiveConcurrency);
       await Promise.all(batch.map(generateTask));
     }
   },

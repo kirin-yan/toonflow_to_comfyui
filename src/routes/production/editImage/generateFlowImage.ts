@@ -24,18 +24,19 @@ export default router.post(
   }),
   async (req, res) => {
     const { model, references = [], quality, ratio, prompt, projectId } = req.body;
+    const generationQuality = model.startsWith("comfyui:") ? "1K" : quality;
 
     const imageClass = await u.Ai.Image(model).run(
       {
         prompt: prompt,
         referenceList: await (async () => {
           const list: { type: "image"; base64: string }[] = [];
-          for (const url of references) {
+          for (const url of references.slice(0, 3)) {
             list.push({ type: "image" as const, base64: await urlToBase64(url) });
           }
           return list;
         })(),
-        size: quality,
+        size: generationQuality,
         aspectRatio: ratio,
       },
       {

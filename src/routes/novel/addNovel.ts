@@ -21,7 +21,7 @@ export default router.post(
   }),
   async (req, res) => {
     const { projectId, data } = req.body;
-    const totalNovelId = [];
+    const totalNovelId: number[] = [];
     const getLastChapterIndex = await u.db("o_novel").where("projectId", projectId).select("chapterIndex").orderBy("chapterIndex", "desc").first();
     let lastChapterIndex = 0;
     if (getLastChapterIndex) {
@@ -45,9 +45,12 @@ export default router.post(
       await u
         .db("o_novel")
         .where("id", item.id)
-        .update({ event: item.event, eventState: item.event ? 1 : -1, errorReason: item?.errReason ?? null });
+        .update({ event: item.event, eventState: item.event ? 1 : -1, errorReason: item?.errorReason ?? null });
     });
-    novelClass.start(chapterAllList, projectId);
+    void novelClass.start(chapterAllList, projectId).catch(async (err) => {
+      const reason = u.error(err).message;
+      await u.db("o_novel").whereIn("id", totalNovelId).where("eventState", 0).update({ eventState: -1, errorReason: reason });
+    });
 
     res.status(200).send(success({ message: "新增原文成功" }));
   },

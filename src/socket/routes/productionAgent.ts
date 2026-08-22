@@ -216,7 +216,7 @@ export default (nsp: Namespace) => {
             try {
               const repeloadObj = {
                 prompt: item.prompt!,
-                size: projectSettingData?.imageQuality as "1K" | "2K" | "4K",
+                size: (projectSettingData?.imageModel?.startsWith("comfyui:") ? "1K" : projectSettingData?.imageQuality) as "1K" | "2K" | "4K",
                 aspectRatio: projectSettingData?.videoRatio as `${number}:${number}`,
               };
 
@@ -224,9 +224,7 @@ export default (nsp: Namespace) => {
                 projectSettingData?.imageModel as `${string}:${string}`,
               )
                 .run({
-                  referenceList: await getAssetsImageBase64(
-                    assetRecord[item.id!] || [],
-                  ),
+                  referenceList: (await getAssetsImageBase64(assetRecord[item.id!] || [])).slice(0, 3),
                   ...repeloadObj,
                 })
                 .then(async (imageCls: any) => {

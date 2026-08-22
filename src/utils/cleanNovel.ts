@@ -19,9 +19,9 @@ class CleanNovel {
   /** 最大并发数 */
   concurrency: number;
 
-  constructor(concurrency: number = 5) {
+  constructor(concurrency: number = 1) {
     this.emitter = new EventEmitter();
-    this.concurrency = concurrency;
+    this.concurrency = Math.max(1, Math.min(concurrency, 1));
   }
 
   private async processChapter(novel: o_novel): Promise<EventType | null> {
@@ -35,16 +35,16 @@ class CleanNovel {
         eventExtraction = promptData?.data ?? undefined;
       }
       const resData = await u.Ai.Text("universalAi").invoke({
-        system: eventExtraction ? JSON.stringify(eventExtraction) : (prompt as string),
+        system: eventExtraction || (prompt as string),
         messages: [
           {
             role: "user",
             content:
-              "请根据以下小说章节数：" +
+              "请根据以下小说章节号：" +
               novel.chapterIndex +
-              "小说章节券：" +
+              "，小说卷名：" +
               novel.reel +
-              "小说章节名称：" +
+              "，小说章节名称：" +
               novel.chapter +
               "、小说章节内容生成事件摘要：\n" +
               novel.chapterData!,

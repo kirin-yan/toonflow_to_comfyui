@@ -52,8 +52,6 @@ export default router.post(
     if (!project) return res.status(500).send(success({ message: "项目为空" }));
 
     const allOutlineDataList: { data: string }[] = await u.db("o_outline").where("projectId", projectId).select("data");
-    await u.db("o_assets").where("id", assetsId).update({ promptState: "生成中" });
-
     const itemMap: Record<string, ResultItem> = {};
 
     if (allOutlineDataList.length > 0)
@@ -78,7 +76,7 @@ export default router.post(
     const result: ResultItem[] = Object.values(itemMap);
     //查询资产是否是衍生资产
     const assetsData = await u.db("o_assets").where("id", assetsId).select("assetsId").first();
-    if (!assetsData) return { code: 500, message: "资产不存在" };
+    if (!assetsData) return res.status(404).send(error("资产不存在"));
     const typeConfig: Record<string, { promptKey: string; itemType: ItemType; label: string; nameLabel: string; visualManual: string }> = {
       role: {
         promptKey: "role-polish",
@@ -109,10 +107,11 @@ export default router.post(
     //获取到视觉手册
     const visualManual = await u.getArtPrompt(project.artStyle as string, "art_skills", config.visualManual);
     if (!visualManual) return res.status(500).send(error("视觉手册未定义"));
+    await u.db("o_assets").where("id", assetsId).update({ promptState: "生成中", promptErrorReason: null });
     findItemByName(result, name, config.itemType);
     const systemPrompt = visualManual;
     try {
-      const { _output } = (await u.Ai.Text("universalAi").invoke({
+      const { text } = await u.Ai.Text("universalAi").invoke({
         system: systemPrompt,
         messages: [
           {
@@ -123,12 +122,16 @@ export default router.post(
       - ${config.nameLabel}描述:${describe},`,
           },
         ],
-      })) as any;
+      });
 
-      if (!_output) return res.status(500).send("失败");
-      await u.db("o_assets").where("id", assetsId).update({ prompt: _output, promptState: "已完成" });
+      const prompt = text.trim();
+      if (!prompt) {
+        await u.db("o_assets").where("id", assetsId).update({ promptState: "失败", promptErrorReason: "AI 未返回提示词" });
+        return res.status(500).send(error("AI 未返回提示词"));
+      }
+      await u.db("o_assets").where("id", assetsId).update({ prompt, promptState: "已完成", promptErrorReason: null });
 
-      res.status(200).send(success({ prompt: _output, assetsId }));
+      res.status(200).send(success({ prompt, assetsId }));
     } catch (e: any) {
       await u
         .db("o_assets")

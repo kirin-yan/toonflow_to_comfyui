@@ -6,6 +6,31 @@ import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 const router = express.Router();
 
+function parseRequestedMode(mode: string): string | string[] {
+  const value = mode.trim();
+  if (!value) throw new Error("视频生成模式不能为空");
+  if (!value.startsWith("[")) return value;
+  try {
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed) || parsed.some((item) => typeof item !== "string")) throw new Error("模式数组格式错误");
+    return parsed;
+  } catch (err) {
+    throw new Error(`视频生成模式格式错误：${err instanceof Error ? err.message : "无法解析"}`);
+  }
+}
+
+function isSupportedMode(selectedModel: any, requestedMode: string | string[]): boolean {
+  const declaredModes = Array.isArray(selectedModel?.mode) ? selectedModel.mode : [];
+  if (typeof requestedMode === "string") return declaredModes.includes(requestedMode);
+  if (requestedMode.length === 1 && declaredModes.includes(requestedMode[0])) return true;
+  return declaredModes.some(
+    (candidate: any) =>
+      Array.isArray(candidate) &&
+      requestedMode.length === candidate.length &&
+      requestedMode.every((item) => candidate.includes(item)),
+  );
+}
+
 type Type = "imageReference" | "startImage" | "endImage" | "videoReference" | "audioReference";
 interface UploadItem {
   fileType: "image" | "video" | "audio";
@@ -63,12 +88,14 @@ export default router.post(
         message: `当前模型不支持 ${resolution}、${duration}秒。支持范围：${supported || "未声明"}`,
       });
     }
-    let modeData = [];
-    if (Array.isArray(mode)) {
-    } else if (typeof mode === "string" && mode.startsWith('["') && mode.endsWith('"]')) {
-      try {
-        modeData = JSON.parse(mode);
-      } catch (e) {}
+    let requestedMode: string | string[];
+    try {
+      requestedMode = parseRequestedMode(mode);
+    } catch (err) {
+      return res.status(400).send({ code: 400, data: null, message: u.error(err).message });
+    }
+    if (!isSupportedMode(selectedModel, requestedMode)) {
+      return res.status(400).send({ code: 400, data: null, message: `模型 ${videoModelName} 不支持生成模式 ${mode}` });
     }
     //获取生成视频比例
     const ratio = await u.db("o_project").select("videoRatio").where("id", projectId).first();
@@ -98,6 +125,22 @@ export default router.post(
         return await u.oss.getImageBase64(item);
       }),
     );
+    const validReferences = base64.filter((item): item is string => item !== null);
+    if (requestedMode === "singleImage" && validReferences.length !== 1) {
+      return res.status(400).send({ code: 400, data: null, message: "单图视频模式必须选择且只能选择一张有效图片" });
+    }
+    if (requestedMode === "startEndRequired" && validReferences.length !== 2) {
+      return res.status(400).send({ code: 400, data: null, message: "首尾帧模式必须选择两张有效图片" });
+    }
+    if (requestedMode === "endFrameOptional" && (validReferences.length < 1 || validReferences.length > 2)) {
+      return res.status(400).send({ code: 400, data: null, message: "首帧必选、尾帧可选模式必须选择一至两张图片" });
+    }
+    if (requestedMode === "startFrameOptional" && validReferences.length > 2) {
+      return res.status(400).send({ code: 400, data: null, message: "首尾帧可选模式最多支持两张图片" });
+    }
+    if (requestedMode === "text" && validReferences.length > 0) {
+      return res.status(400).send({ code: 400, data: null, message: "文生视频模式不能携带参考图片，请清空素材后重试" });
+    }
     //新增
     const [videoId] = await u.db("o_video").insert({
       filePath: videoPath,
@@ -107,6 +150,7 @@ export default router.post(
       projectId,
       videoTrackId: trackId,
     });
+    await u.db("o_videoTrack").where("id", trackId).update({ state: "生成中", reason: null });
     res.status(200).send(success(videoId));
     (async () => {
       try {
@@ -120,8 +164,8 @@ export default router.post(
         await aiVideo.run(
           {
             prompt,
-            referenceList: base64.filter((item) => item !== null).map((item) => ({ type: "image" as const, base64: item! })),
-            mode: modeData.length > 0 ? modeData : mode,
+            referenceList: validReferences.map((item) => ({ type: "image" as const, base64: item })),
+            mode: requestedMode,
             duration,
             aspectRatio: (ratio?.videoRatio as "16:9" | "9:16") || "16:9",
             resolution,
@@ -135,15 +179,18 @@ export default router.post(
           },
         );
         await aiVideo.save(videoPath);
-        await u.db("o_video").where("id", videoId).update({ state: "生成成功" });
+        await u.db("o_video").where("id", videoId).update({ state: "已完成", errorReason: null });
+        await u.db("o_videoTrack").where("id", trackId).update({ state: "已完成", reason: null });
       } catch (error: any) {
+        const reason = error instanceof Error ? error.message : "未知错误";
         await u
           .db("o_video")
           .where("id", videoId)
           .update({
             state: "生成失败",
-            errorReason: error instanceof Error ? error.message : "未知错误",
+            errorReason: reason,
           });
+        await u.db("o_videoTrack").where("id", trackId).update({ state: "生成失败", reason });
       }
     })();
   },

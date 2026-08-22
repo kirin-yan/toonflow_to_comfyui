@@ -65,7 +65,7 @@ const requestSchema = {
   items: z.array(
     z.object({
       id: z.number(),
-      type: z.enum(["role", "scene", "tool", "storyboard"]),
+      type: z.enum(["role", "scene", "tool"]),
       name: z.string(),
       prompt: z.string(),
       base64: z.string().optional().nullable(),
@@ -75,6 +75,7 @@ const requestSchema = {
 
 export default router.post("/", validateFields(requestSchema), async (req, res) => {
   const { projectId, model, resolution, concurrentCount, items } = req.body;
+  const generationResolution = model.startsWith("comfyui:") ? "1K" : resolution;
 
   // 1. 查询项目
   const project = await u.db("o_project").where("id", projectId).select("artStyle", "type", "intro").first();
@@ -93,7 +94,8 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
   }
 
   // 3. 后台异步并发生成，不阻塞响应
-  const limit = pLimit(concurrentCount ?? 1);
+  // 本地 ComfyUI 单 GPU 串行入队，避免多个生成任务与 Ollama 同时争抢显存。
+  const limit = pLimit(model.startsWith("comfyui:") ? 1 : concurrentCount ?? 1);
 
   const tasks = items.map((item: { id: number; type: string; name: string; prompt: string; base64: string | null | undefined }, index: number) =>
     limit(async () => {
@@ -117,7 +119,7 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
           {
             prompt: userPrompt,
             referenceList: item.base64 ? [{ base64: item.base64, type: "image" }] : [],
-            size: resolution,
+            size: generationResolution,
             aspectRatio: "16:9",
           },
           {
@@ -127,11 +129,10 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
             relatedObjects: JSON.stringify(relatedObjects),
           },
         );
-        aiImage.save(imagePath);
+        await aiImage.save(imagePath);
 
         const imageData = await u.db("o_image").where("id", imageId).select("*").first();
         console.log("%c Line:133 🥒 imageData", "background:#465975", imageData);
-        if (!imageData) return res.status(500).send("资产已被删除");
         if (!imageData) return;
         if (imageData.state === "生成失败") return;
         await u
@@ -142,7 +143,7 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
             filePath: imagePath,
             type: item.type,
             model: model.split(":")[1],
-            resolution,
+            resolution: generationResolution,
           });
 
         await u.db("o_assets").where("id", item.id).update({ imageId });

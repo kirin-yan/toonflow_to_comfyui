@@ -1,5 +1,5 @@
 import { Socket } from "socket.io";
-import { tool } from "ai";
+import { stepCountIs, tool } from "ai";
 import { z } from "zod";
 import u from "@/utils";
 import Memory from "@/utils/agent/memory";
@@ -71,6 +71,7 @@ export async function decisionAI(ctx: AgentContext) {
       ...useTools({ resTool: ctx.resTool, msg: ctx.msg }),
       ...createSubAgent(ctx),
     },
+    stopWhen: stepCountIs(24),
     onFinish: async (completion) => {
       await memory.add("assistant:decision", removeAllXmlTags(completion.text));
     },
@@ -82,6 +83,7 @@ export async function decisionAI(ctx: AgentContext) {
 function createSubAgent(parentCtx: AgentContext) {
   const { resTool, abortSignal } = parentCtx;
   const memory = new Memory("scriptAgent", parentCtx.isolationKey);
+  let storySkeletonStarted = false;
 
   async function runAgent({
     prompt,
@@ -89,6 +91,8 @@ function createSubAgent(parentCtx: AgentContext) {
     name,
     memoryKey,
     tools: extraTools,
+    toolNames,
+    maxSteps,
     messages,
   }: {
     prompt: string;
@@ -96,6 +100,8 @@ function createSubAgent(parentCtx: AgentContext) {
     name: string;
     memoryKey: string;
     tools?: Record<string, any>;
+    toolNames?: string[];
+    maxSteps?: number;
     messages?: { role: "user" | "assistant" | "system"; content: string }[];
   }) {
     parentCtx.msg.complete();
@@ -107,7 +113,8 @@ function createSubAgent(parentCtx: AgentContext) {
       system,
       messages: messages ?? [{ role: "user", content: prompt }],
       abortSignal,
-      tools: { ...extraTools, ...useTools({ resTool, msg: subMsg }) },
+      tools: { ...extraTools, ...useTools({ resTool, msg: subMsg, toolsNames: toolNames }) },
+      ...(maxSteps && { stopWhen: stepCountIs(maxSteps) }),
     });
 
     try {
@@ -143,6 +150,12 @@ function createSubAgent(parentCtx: AgentContext) {
     description: "运行执行subAgent来完成故事骨架相关任务",
     inputSchema: promptInput,
     execute: async ({ prompt }) => {
+      if (storySkeletonStarted) {
+        throw new Error("本轮故事骨架子任务已经执行过，请使用已有结果继续，不要重复启动故事骨架生成。");
+      }
+      storySkeletonStarted = true;
+      await assertNovelEventsReady(resTool.data.projectId);
+
       const skill = path.join(u.getPath("skills"), "script_execution_skeleton.md");
       const systemPrompt = await fs.promises.readFile(skill, "utf-8");
 
@@ -153,6 +166,8 @@ function createSubAgent(parentCtx: AgentContext) {
         system: systemPrompt + formatPrompt,
         name: "编剧",
         memoryKey: "assistant:execution:storySkeleton",
+        toolNames: ["get_novel_events", "get_novel_text", "get_planData"],
+        maxSteps: 16,
         messages: [{ role: "user", content: prompt + formatPrompt }],
       });
     },
@@ -172,6 +187,7 @@ function createSubAgent(parentCtx: AgentContext) {
         system: systemPrompt + formatPrompt,
         name: "编剧",
         memoryKey: "assistant:execution:adaptationStrategy",
+        maxSteps: 16,
         messages: [{ role: "user", content: prompt + formatPrompt }],
       });
     },
@@ -202,6 +218,7 @@ function createSubAgent(parentCtx: AgentContext) {
         ],
         name: "编剧",
         memoryKey: "assistant:execution:script",
+        maxSteps: 24,
       });
     },
   });
@@ -218,6 +235,7 @@ function createSubAgent(parentCtx: AgentContext) {
         system: systemPrompt,
         name: "编辑",
         memoryKey: "assistant:supervision",
+        maxSteps: 12,
       });
     },
   });
@@ -228,6 +246,35 @@ function createSubAgent(parentCtx: AgentContext) {
     run_sub_agent_script,
     run_supervision_agent,
   };
+}
+
+async function assertNovelEventsReady(projectId: number) {
+  const chapters = await u
+    .db("o_novel")
+    .where("projectId", projectId)
+    .select("chapterIndex", "event", "eventState", "errorReason")
+    .orderBy("chapterIndex", "asc");
+
+  if (!chapters.length) {
+    throw new Error("无法生成故事骨架：当前项目尚未导入小说章节。");
+  }
+
+  const pending = chapters.filter((chapter: any) => chapter.eventState === 0);
+  if (pending.length) {
+    throw new Error(`无法生成故事骨架：章节事件仍在生成中（${formatChapterIndexes(pending)}），请等待事件生成完成后重试。`);
+  }
+
+  const failed = chapters.filter((chapter: any) => chapter.eventState === -1 || !String(chapter.event ?? "").trim());
+  if (failed.length) {
+    const reasons = failed
+      .map((chapter: any) => `第${chapter.chapterIndex}章${chapter.errorReason ? `：${chapter.errorReason}` : ""}`)
+      .join("；");
+    throw new Error(`无法生成故事骨架：以下章节事件生成失败或内容为空，请先重新生成章节事件：${reasons}`);
+  }
+}
+
+function formatChapterIndexes(chapters: any[]) {
+  return chapters.map((chapter) => `第${chapter.chapterIndex}章`).join("、");
 }
 
 function removeAllXmlTags(text: string): string {

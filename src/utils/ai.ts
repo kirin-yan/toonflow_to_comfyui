@@ -199,7 +199,7 @@ interface VideoConfig {
   prompt: string;
   referenceList?: ReferenceList[];
   audio?: boolean;
-  mode: VideoMode[];
+  mode: string | string[];
 }
 
 class AiVideo {

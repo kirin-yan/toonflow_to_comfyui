@@ -25,6 +25,7 @@
     "start": "cross-env NODE_ENV=prod node data/serve/app.js",
     "lint": "tsc --noEmit",
     "build": "cross-env NODE_ENV=prod tsx scripts/build.ts",
+    "postbuild": "node scripts/patch-chapter-parser.cjs",
     "pack": "electron-builder --dir",
     "dist": "yarn build && electron-builder",
     "dist:win": "yarn build && electron-builder --win",

@@ -65,7 +65,7 @@ const requestSchema = {
   model: z.string(),
   resolution: z.string(),
   id: z.number(),
-  type: z.enum(["role", "scene", "tool", "storyboard"]),
+  type: z.enum(["role", "scene", "tool"]),
   name: z.string(),
   prompt: z.string(),
   base64: z.string().optional().nullable(),
@@ -73,6 +73,7 @@ const requestSchema = {
 
 export default router.post("/", validateFields(requestSchema), async (req, res) => {
   const { projectId, model, resolution, id, type, name, prompt, base64 } = req.body;
+  const generationResolution = model.startsWith("comfyui:") ? "1K" : resolution;
 
   // 1. 查询项目 & 获取类型配置
   const project = await u.db("o_project").where("id", projectId).select("artStyle", "type", "intro").first();
@@ -101,7 +102,7 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
       {
         prompt: userPrompt,
         referenceList: base64 ? [{ type: "image", base64 }] : [],
-        size: resolution,
+        size: generationResolution,
         aspectRatio: "16:9",
       },
       {
@@ -124,7 +125,7 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
         filePath: imagePath,
         type,
         model: model.split(":")[1],
-        resolution,
+        resolution: generationResolution,
       });
 
     const path = await u.oss.getFileUrl(imagePath);

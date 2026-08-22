@@ -89,7 +89,7 @@ export default router.post(
     if (!assetsDataList || assetsDataList.length === 0) return res.status(500).send(error("资产不存在"));
     const assetsDataMap = new Map(assetsDataList.map((a: any) => [a.id, a]));
     // 所有前置检测通过后，再批量更新状态为生成中
-    await u.db("o_assets").whereIn("id", assetsIds).update({ promptState: "生成中" });
+    await u.db("o_assets").whereIn("id", assetsIds).update({ promptState: "生成中", promptErrorReason: null });
 
     const getTypeConfig = (
       isDerivative: boolean,
@@ -117,25 +117,31 @@ export default router.post(
       },
     });
 
-    // 后台异步并发生成，不阻塞响应
-    const limit = pLimit(concurrentCount ?? 1);
+    // 本地 Qwen 串行生成提示词，避免多请求同时占用显存。保留 concurrentCount 入参以兼容现有前端。
+    const limit = pLimit(Math.min(concurrentCount ?? 1, 1));
     const tasks = items.map((item: { assetsId: number; type: string; name: string; describe: string }) =>
       limit(async () => {
         const assetData = assetsDataMap.get(item.assetsId);
-        if (!assetData) return;
+        if (!assetData) {
+          await u.db("o_assets").where("id", item.assetsId).update({ promptState: "失败", promptErrorReason: "资产不存在" });
+          return;
+        }
         const typeConfig = getTypeConfig(!!assetData.assetsId);
         const config = typeConfig[item.type];
-        if (!config) return;
+        if (!config) {
+          await u.db("o_assets").where("id", item.assetsId).update({ promptState: "失败", promptErrorReason: "不支持的资产类型" });
+          return;
+        }
         //获取到视觉手册
         const visualManual = await u.getArtPrompt(project.artStyle as string, "art_skills", config.visualManual);
         if (!visualManual) {
-          await u.db("o_assets").where("id", item.assetsId).update({ promptState: "生成失败", promptErrorReason: "视觉手册未定义" });
+          await u.db("o_assets").where("id", item.assetsId).update({ promptState: "失败", promptErrorReason: "视觉手册未定义" });
           return;
         }
         findItemByName(result, item.name, config.itemType);
         const systemPrompt = visualManual;
         try {
-          const { _output } = (await u.Ai.Text("universalAi").invoke({
+          const { text } = await u.Ai.Text("universalAi").invoke({
             system: systemPrompt,
             messages: [
               {
@@ -147,14 +153,15 @@ export default router.post(
       - ${config.nameLabel}描述:${item.describe},`,
               },
             ],
-          })) as any;
+          });
 
-          if (!_output) {
-            await u.db("o_assets").where("id", item.assetsId).update({ promptState: "生成失败" });
+          const prompt = text.trim();
+          if (!prompt) {
+            await u.db("o_assets").where("id", item.assetsId).update({ promptState: "失败", promptErrorReason: "AI 未返回提示词" });
             return;
           }
 
-          await u.db("o_assets").where("id", item.assetsId).update({ prompt: _output, promptState: "已完成" });
+          await u.db("o_assets").where("id", item.assetsId).update({ prompt, promptState: "已完成", promptErrorReason: null });
         } catch (e: any) {
           await u
             .db("o_assets")
@@ -165,9 +172,7 @@ export default router.post(
     );
 
     // 后台执行，不等待结果
-    Promise.all(tasks).catch((err: any) => {
-      res.status(500).send(error(err));
-    });
+    void Promise.all(tasks).catch((err: any) => console.error("[batchPolishAssetsPrompt] 后台生成失败:", u.error(err).message));
 
     return res.status(200).send(success({ total: items.length }));
   },

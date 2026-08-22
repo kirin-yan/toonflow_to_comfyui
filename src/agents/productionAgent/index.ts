@@ -1,5 +1,5 @@
 import { Socket } from "socket.io";
-import { tool } from "ai";
+import { stepCountIs, tool } from "ai";
 import { z } from "zod";
 import u from "@/utils";
 import Memory from "@/utils/agent/memory";
@@ -48,9 +48,11 @@ export async function decisionAI(ctx: AgentContext) {
   const [_, imageModelName] = projectInfo.imageModel!.split(":");
   const [id, videoModelName] = projectInfo.videoModel!.split(":");
   const models = await u.vendor.getModelList(id);
-  if(!models.length) throw new Error(`项目使用的模型不存在，ID: ${projectInfo.videoModel}`);
+  if (!models.length) throw new Error(`项目使用的模型不存在，ID: ${projectInfo.videoModel}`);
   const findData = models.find((i: any) => i.modelName == videoModelName);
-  const isRef = findData.mode.every((i: any) => Array.isArray(i));
+  if (!findData) throw new Error(`项目使用的视频模型不存在，ID: ${projectInfo.videoModel}`);
+  const configuredMode = String(projectInfo.mode ?? "").trim();
+  const isRef = configuredMode.startsWith("[") || (configuredMode === "" && findData.mode.some((i: any) => Array.isArray(i)));
   const modelInfo = `项目使用的模型如下：\n图像模型：${imageModelName}\n视频模型：${videoModelName}\n多参：${isRef ? "是" : "否"}`;
 
   const mem = buildMemPrompt(await memory.get(text));
@@ -67,6 +69,7 @@ export async function decisionAI(ctx: AgentContext) {
       ...useTools({ resTool: ctx.resTool, msg: ctx.msg }),
       ...(await createSubAgent(ctx)),
     },
+    stopWhen: stepCountIs(24),
     onFinish: async (completion) => {
       await memory.add("assistant:decision", removeAllXmlTags(completion.text));
     },
@@ -84,6 +87,7 @@ async function createSubAgent(parentCtx: AgentContext) {
     name,
     memoryKey,
     tools: extraTools,
+    maxSteps = 20,
     messages,
   }: {
     prompt: string;
@@ -91,6 +95,7 @@ async function createSubAgent(parentCtx: AgentContext) {
     name: string;
     memoryKey: string;
     tools?: Record<string, any>;
+    maxSteps?: number;
     messages?: { role: "user" | "assistant" | "system"; content: string }[];
   }) {
     parentCtx.msg.complete();
@@ -103,6 +108,7 @@ async function createSubAgent(parentCtx: AgentContext) {
       messages: messages ?? [{ role: "user", content: prompt }],
       abortSignal,
       tools: { ...extraTools, ...useTools({ resTool, msg: subMsg }) },
+      stopWhen: stepCountIs(maxSteps),
     });
 
     try {
@@ -141,9 +147,11 @@ async function createSubAgent(parentCtx: AgentContext) {
   const [_, imageModelName] = projectInfo.imageModel!.split(":");
   const [id, videoModelName] = projectInfo.videoModel!.split(":");
   const models = await u.vendor.getModelList(id);
-  if(!models.length) throw new Error(`项目使用的模型不存在，ID: ${projectInfo.videoModel}`);
+  if (!models.length) throw new Error(`项目使用的模型不存在，ID: ${projectInfo.videoModel}`);
   const findData = models.find((i: any) => i.modelName == videoModelName);
-  const isRef = findData.mode.every((i: any) => Array.isArray(i));
+  if (!findData) throw new Error(`项目使用的视频模型不存在，ID: ${projectInfo.videoModel}`);
+  const configuredMode = String(projectInfo.mode ?? "").trim();
+  const isRef = configuredMode.startsWith("[") || (configuredMode === "" && findData.mode.some((i: any) => Array.isArray(i)));
   const modelInfo = `项目使用的模型如下：\n图像模型：${imageModelName}\n视频模型：${videoModelName}\n多参：${isRef ? "是" : "否"}`;
 
   // const run_sub_agent_execution = tool({
