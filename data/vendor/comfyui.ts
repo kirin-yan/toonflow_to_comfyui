@@ -278,6 +278,41 @@ const parseNumber = (value: string | undefined, fallback: number) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const formatErrorForLog = (error: any) => {
+  const response = error?.response;
+  const headers = response?.headers;
+  const details = {
+    name: error?.name || "Error",
+    message: error?.message || String(error),
+    code: error?.code,
+    request: error?.config
+      ? {
+          method: error.config.method,
+          url: error.config.url,
+        }
+      : undefined,
+    response: response
+      ? {
+          status: response.status,
+          statusText: response.statusText,
+          headers: typeof headers?.toJSON === "function" ? headers.toJSON() : headers,
+          data: response.data,
+        }
+      : undefined,
+    stack: error?.stack,
+  };
+  try {
+    return JSON.stringify(details, null, 2);
+  } catch (serializationError: any) {
+    return JSON.stringify({
+      name: details.name,
+      message: details.message,
+      code: details.code,
+      serializationError: serializationError?.message || String(serializationError),
+    });
+  }
+};
+
 const pickText = (...values: Array<string | undefined>) => {
   for (const value of values) {
     const trimmed = String(value ?? "").trim();
@@ -770,7 +805,7 @@ const imageRequest = async (config: ImageConfig, model: ImageModel): Promise<str
     );
     return await runWorkflow(workflow, replacements, "image");
   } catch (error: any) {
-    logger(`[ComfyUI][image] request failed: model=${model.modelName}, error=${error?.message || String(error)}`);
+    logger(`[ComfyUI][image] request failed: model=${model.modelName}, error=${formatErrorForLog(error)}`);
     throw error;
   }
 };
@@ -816,7 +851,7 @@ const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<str
     );
     return await runWorkflow(workflow, replacements, "video");
   } catch (error: any) {
-    logger(`[ComfyUI][video] request failed: model=${model.modelName}, error=${error?.message || String(error)}`);
+    logger(`[ComfyUI][video] request failed: model=${model.modelName}, error=${formatErrorForLog(error)}`);
     throw error;
   }
 };
