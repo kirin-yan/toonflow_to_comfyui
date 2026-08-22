@@ -120,7 +120,7 @@ const vendor: VendorConfig = {
     "Supported placeholders include {{prompt}}, {{styledPrompt}}, {{negativePrompt}}, {{animeNegativePrompt}}, {{width}}, {{height}}, {{seed}}, {{filenamePrefix}}, {{image1}}, {{image2}}, {{image3}}, {{startImage}}, {{endImage}}, {{duration}}, {{fps}}, {{frames}}, {{resolution}}, {{aspectRatio}}, {{videoDecodeTileSize}}, {{videoDecodeOverlap}}, {{videoDecodeTemporalSize}}, and {{videoDecodeTemporalOverlap}}.",
   ].join("\n\n"),
   inputs: [
-    { key: "baseUrl", label: "ComfyUI base URL", type: "url", required: true, placeholder: "http://127.0.0.1:8000" },
+    { key: "baseUrl", label: "ComfyUI base URL", type: "url", required: true, placeholder: "http://127.0.0.1:8188" },
     { key: "imageTextWorkflow", label: "Image text workflow", type: "text", required: false, placeholder: "Workflow JSON or http(s) URL" },
     {
       key: "imageSingleReferenceWorkflow",
@@ -180,7 +180,7 @@ const vendor: VendorConfig = {
     { key: "timeoutMs", label: "Timeout ms", type: "text", required: false, placeholder: "3600000" },
   ],
   inputValues: {
-    baseUrl: "http://127.0.0.1:8000",
+    baseUrl: "http://127.0.0.1:8188",
     imageTextWorkflow: "",
     imageSingleReferenceWorkflow: "",
     imageMultiReferenceWorkflow: "",
@@ -258,7 +258,7 @@ const fallbackMimeByType: Record<ReferenceList["type"], string> = {
   audio: "audio/mpeg",
 };
 
-const getBaseUrl = () => (vendor.inputValues.baseUrl || "http://127.0.0.1:8000").replace(/\/+$/, "");
+const getBaseUrl = () => (vendor.inputValues.baseUrl || "http://127.0.0.1:8188").replace(/\/+$/, "");
 
 const assertComfyReady = async () => {
   try {

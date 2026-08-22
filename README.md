@@ -291,7 +291,7 @@ ComfyUI 工作流里现在支持这些核心占位符：
 
 ```json
 {
-  "baseUrl": "http://127.0.0.1:8000",
+  "baseUrl": "http://127.0.0.1:8188",
   "animePositivePrefix": "anime style, manga aesthetic, clean lineart, cel shading, expressive characters, cinematic composition",
   "animeNegativePrompt": "photorealistic, realistic skin, 3d render, blurry, low detail, low quality, ugly, distorted anatomy, extra fingers, bad hands, messy background",
   "negativePrompt": "photorealistic, realistic skin, 3d render, blurry, low detail, low quality, ugly, distorted anatomy, extra fingers, bad hands, messy background",
@@ -326,7 +326,7 @@ ComfyUI 工作流里现在支持这些核心占位符：
 ### 8.2 当前访问地址
 
 - Toonflow: `http://localhost:10588`
-- ComfyUI: `http://127.0.0.1:8000`
+- ComfyUI: `http://127.0.0.1:8188`
 
 ### 8.3 Toonflow 中的工作流使用方式
 

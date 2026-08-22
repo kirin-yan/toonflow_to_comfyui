@@ -195,6 +195,11 @@ resultTool 参数：
         ...(vendor?.inputValues ?? {}),
         ...savedInputValues,
       };
+      // 仅迁移历史版本写入的默认地址；用户配置的其他 ComfyUI 地址保持不变。
+      if (/^http:\/\/127\.0\.0\.1:8000\/?$/i.test(String(mergedInputValues.baseUrl ?? "").trim())) {
+        mergedInputValues.baseUrl = "http://127.0.0.1:8188";
+        console.log("[修复数据库] 已将 ComfyUI 默认地址从 8000 迁移到 8188");
+      }
       if (comfyuiWorkflowDir) {
         for (const [key, filename] of Object.entries(comfyuiWorkflowFiles)) {
           const savedWorkflow = String(mergedInputValues[key] ?? "").trim();
