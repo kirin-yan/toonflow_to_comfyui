@@ -1,36 +1,106 @@
-[2026-08-22 15:36:15.539] [LOG] [环境变量：dev]
-[2026-08-22 15:36:16.873] [LOG] 数据库目录: C:\AI_Tools\toonflow_to_comfyui\data\db2.sqlite
-[2026-08-22 15:36:18.334] [LOG] [修复数据库] 已将 ComfyUI 默认地址从 8000 迁移到 8188
-[2026-08-22 15:36:19.626] [LOG] [Socket] 注册命名空间: /api/socket/productionAgent
-[2026-08-22 15:36:19.627] [LOG] [Socket] 注册命名空间: /api/socket/scriptAgent
-[2026-08-22 15:36:19.642] [LOG] 文件目录: C:\AI_Tools\toonflow_to_comfyui\data\oss
-[2026-08-22 15:36:19.643] [LOG] 文件目录: C:\AI_Tools\toonflow_to_comfyui\data\skills
-[2026-08-22 15:36:19.644] [LOG] 文件目录: C:\AI_Tools\toonflow_to_comfyui\data\assets
-[2026-08-22 15:36:19.645] [LOG] 静态网站目录: C:\AI_Tools\toonflow_to_comfyui\data\web
-[2026-08-22 15:36:24.515] [LOG] [服务启动成功]: http://localhost:10588
-GET / 304 4.312 ms - -
-POST /api/modelSelect/getModelList 200 111.617 ms - 146
-POST /api/modelSelect/getModelList 200 58.359 ms - 146
-POST /api/project/getProject 200 2.824 ms - 395
-POST /api/modelSelect/getModelDetail 200 26.184 ms - 162
-POST /api/modelSelect/getModelDetail 200 19.210 ms - 295
-POST /api/setting/about/checkUpdate 200 534.850 ms - 210
-POST /api/novel/getNovel 200 3.297 ms - 21736
-POST /api/modelSelect/getModelList 200 38.564 ms - 146
-[2026-08-22 15:36:33.606] [LOG] %c Line:36 🍎 assets2AudioData background:#3f7cff []
-POST /api/cornerScape/getAllAssets 200 11.685 ms - 11672
-POST /api/assetsGenerate/batchGenerateImageAssets 200 13.840 ms - 50
-[2026-08-22 15:36:36.692] [LOG] 【VM】[ComfyUI][image] request: model=comfyui-image, workflow=text, references=0, size=1K, dimensions=1344x768
-[2026-08-22 15:36:36.695] [LOG] 【VM】[ComfyUI][image] validating workflow: baseUrl=http://127.0.0.1:8188, nodes=10
-[2026-08-22 15:36:37.848] [LOG] 【VM】[ComfyUI][image] workflow node validation passed: nodes=10
-[2026-08-22 15:36:37.849] [LOG] 【VM】[ComfyUI] queue prompt
-[2026-08-22 15:36:37.867] [LOG] 【VM】[ComfyUI][image] request failed: model=comfyui-image, error=Request failed with status code 400
-[2026-08-22 15:36:37.868] [ERROR] [资产图片生成失败] assetId=1 imageId=5 name="林深" type=role model=comfyui:comfyui-image: Prompt outputs failed validation AxiosError: Request failed with status code 400
-    at settle (C:\AI_Tools\toonflow_to_comfyui\node_modules\axios\lib\core\settle.js:20:7)
-    at IncomingMessage.handleStreamEnd (C:\AI_Tools\toonflow_to_comfyui\node_modules\axios\lib\adapters\http.js:849:13)
-    at IncomingMessage.emit (node:events:521:24)
-    at endReadableNT (node:internal/streams/readable:1735:12)
-    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
-POST /api/assets/pollingImageAssets 200 2.475 ms - 137
-[2026-08-22 15:36:39.628] [LOG] %c Line:36 🍎 assets2AudioData background:#3f7cff []
-POST /api/cornerScape/getAllAssets 200 10.252 ms - 11622
+[2026-08-23 16:37:43.257] [LOG] 【VM】[ComfyUI][image] status: prompt_id=d48c5294-8fa6-43aa-b1f9-1c096f54eab1, status=success
+[2026-08-23 16:37:43.258] [LOG] 【VM】[ComfyUI][image] output ready: prompt_id=d48c5294-8fa6-43aa-b1f9-1c096f54eab1, filename=toonflow_1787470610891_00001_.png, subfolder=, type=output
+[2026-08-23 16:37:43.274] [LOG] 【VM】[ComfyUI][image] success: prompt_id=d48c5294-8fa6-43aa-b1f9-1c096f54eab1, filename=toonflow_1787470610891_00001_.png, encodedLength=1365982
+[2026-08-23 16:37:43.284] [LOG] %c Line:133 🥒 imageData background:#465975 {"id":8,"filePath":null,"type":"role","assetsId":1,"model":null,"resolution":null,"state":"生成中","errorReason":null}
+POST /api/assets/pollingImageAssets 200 1.675 ms - 188
+[2026-08-23 16:37:44.783] [LOG] %c Line:36 🍎 assets2AudioData background:#3f7cff []
+POST /api/cornerScape/getAllAssets 200 11.529 ms - 11792
+GET /oss/1786438178067/role/5dc65b19-145f-4289-932c-e07aef3b3f48.jpg 200 14.379 ms - 1024470
+[2026-08-23 16:38:03.528] [LOG] %c Line:36 🍎 assets2AudioData background:#3f7cff []
+POST /api/cornerScape/getAllAssets 200 10.815 ms - 11792
+POST /api/assetsGenerate/batchPolishAssetsPrompt 200 18.660 ms - 50
+POST /api/assets/pollingPromptAssets 200 2.733 ms - 373
+[2026-08-23 16:38:14.935] [LOG] %c Line:36 🍎 assets2AudioData background:#3f7cff []
+POST /api/cornerScape/getAllAssets 200 12.352 ms - 11817
+POST /api/assetsGenerate/batchPolishAssetsPrompt 200 9.031 ms - 50
+POST /api/assets/pollingPromptAssets 200 1.591 ms - 676
+[2026-08-23 16:38:35.580] [LOG] %c Line:36 🍎 assets2AudioData background:#3f7cff []
+POST /api/cornerScape/getAllAssets 200 9.316 ms - 11842
+[2026-08-23 16:38:37.396] [LOG] %c Line:36 🍎 assets2AudioData background:#3f7cff []
+POST /api/cornerScape/getAllAssets 200 9.802 ms - 11842
+POST /api/assets/saveAssets 200 15.501 ms - 77
+POST /api/script/getScrptApi 200 2.499 ms - 8982
+POST /api/modelSelect/getModelList 200 78.053 ms - 146
+[2026-08-23 16:38:50.522] [LOG] %c Line:36 🍎 assets2AudioData background:#3f7cff []
+POST /api/cornerScape/getAllAssets 200 9.904 ms - 11840
+GET /oss/1786438178067/role/5dc65b19-145f-4289-932c-e07aef3b3f48.jpg 304 0.648 ms - -
+POST /api/modelSelect/getModelList 200 50.813 ms - 146
+POST /api/assetsGenerate/batchPolishAssetsPrompt 200 6.546 ms - 50
+POST /api/assets/pollingPromptAssets 200 1.380 ms - 371
+[2026-08-23 16:39:02.232] [LOG] %c Line:36 🍎 assets2AudioData background:#3f7cff []
+POST /api/cornerScape/getAllAssets 200 10.453 ms - 11840
+[2026-08-23 16:39:10.723] [LOG] %c Line:36 🍎 assets2AudioData background:#3f7cff []
+POST /api/cornerScape/getAllAssets 200 9.483 ms - 11840
+POST /api/modelSelect/getModelList 200 41.509 ms - 146
+[2026-08-23 16:39:20.690] [LOG] %c Line:36 🍎 assets2AudioData background:#3f7cff []
+POST /api/cornerScape/getAllAssets 200 4.521 ms - 2822
+[2026-08-23 16:39:26.496] [LOG] %c Line:36 🍎 assets2AudioData background:#3f7cff []
+POST /api/cornerScape/getAllAssets 200 9.878 ms - 11840
+[2026-08-23 16:39:28.653] [LOG] %c Line:36 🍎 assets2AudioData background:#3f7cff []
+POST /api/cornerScape/getAllAssets 200 9.203 ms - 11840
+[2026-08-23 16:39:38.124] [LOG] %c Line:36 🍎 assets2AudioData background:#3f7cff []
+POST /api/cornerScape/getAllAssets 200 9.258 ms - 11840
+[2026-08-23 16:39:42.036] [LOG] %c Line:36 🍎 assets2AudioData background:#3f7cff []
+POST /api/cornerScape/getAllAssets 200 9.860 ms - 11840
+POST /api/assetsGenerate/batchPolishAssetsPrompt 200 6.211 ms - 50
+POST /api/assets/pollingPromptAssets 200 1.551 ms - 1008
+[2026-08-23 16:39:48.633] [LOG] %c Line:36 🍎 assets2AudioData background:#3f7cff []
+POST /api/cornerScape/getAllAssets 200 10.625 ms - 11890
+[2026-08-23 16:40:39.484] [LOG] %c Line:36 🍎 assets2AudioData background:#3f7cff []
+POST /api/cornerScape/getAllAssets 200 10.553 ms - 11890
+POST /api/assetsGenerate/batchPolishAssetsPrompt 200 6.494 ms - 50
+POST /api/assets/pollingPromptAssets 200 1.390 ms - 383
+[2026-08-23 16:40:47.979] [LOG] %c Line:36 🍎 assets2AudioData background:#3f7cff []
+POST /api/cornerScape/getAllAssets 200 8.481 ms - 11890
+POST /api/script/getScrptApi 200 2.096 ms - 8982
+POST /api/scriptAgent/getPlanData 200 2.540 ms - 12088
+POST /api/novel/getNovelData 200 1.391 ms - 21897
+POST /api/agents/getMemory 200 2.431 ms - 5445
+[2026-08-23 16:41:19.130] [LOG] [scriptAgent] 已连接: IWGdEuURI-UDCSobAAAB
+POST /api/script/getScrptApi 200 2.691 ms - 8982
+POST /api/modelSelect/getModelList 200 42.675 ms - 146
+[2026-08-23 16:41:23.491] [LOG] %c Line:36 🍎 assets2AudioData background:#3f7cff []
+POST /api/cornerScape/getAllAssets 200 9.903 ms - 11890
+GET /oss/1786438178067/role/5dc65b19-145f-4289-932c-e07aef3b3f48.jpg 304 0.467 ms - -
+POST /api/script/getScrptApi 200 2.260 ms - 8982
+POST /api/modelSelect/getModelList 200 41.141 ms - 146
+[2026-08-23 16:41:26.298] [LOG] %c Line:36 🍎 assets2AudioData background:#3f7cff []
+POST /api/cornerScape/getAllAssets 200 9.960 ms - 11890
+GET /oss/1786438178067/role/5dc65b19-145f-4289-932c-e07aef3b3f48.jpg 304 0.358 ms - -
+POST /api/script/getScrptApi 200 1.842 ms - 8982
+POST /api/agents/getMemory 200 1.533 ms - 41
+POST /api/production/getFlowData 200 3.559 ms - 3760
+[2026-08-23 16:41:28.074] [LOG] [productionAgent] 已连接: 3JF3de2pkMwgfNlDAAAC
+POST /api/agents/getMemory 200 1.193 ms - 41
+[2026-08-23 16:41:28.457] [LOG] [productionAgent] 上下文已更新: 1786438178067:productionAgent:1
+POST /api/agents/getMemory 200 1.775 ms - 41
+POST /api/script/getScrptApi 200 2.079 ms - 8982
+POST /api/modelSelect/getModelList 200 38.511 ms - 146
+[2026-08-23 16:41:53.302] [LOG] %c Line:36 🍎 assets2AudioData background:#3f7cff []
+POST /api/cornerScape/getAllAssets 200 10.168 ms - 11890
+GET /oss/1786438178067/role/5dc65b19-145f-4289-932c-e07aef3b3f48.jpg 304 0.364 ms - -
+POST /api/assetsGenerate/batchPolishAssetsPrompt 200 6.116 ms - 50
+POST /api/assets/pollingPromptAssets 200 1.468 ms - 674
+[2026-08-23 16:42:00.316] [LOG] %c Line:36 🍎 assets2AudioData background:#3f7cff []
+POST /api/cornerScape/getAllAssets 200 9.518 ms - 11890
+[2026-08-23 16:42:03.838] [LOG] %c Line:36 🍎 assets2AudioData background:#3f7cff []
+POST /api/cornerScape/getAllAssets 200 9.208 ms - 11890
+POST /api/modelSelect/getModelList 200 34.842 ms - 146
+[2026-08-23 16:42:04.802] [LOG] %c Line:36 🍎 assets2AudioData background:#3f7cff []
+POST /api/cornerScape/getAllAssets 200 9.482 ms - 11890
+[2026-08-23 16:42:05.370] [LOG] %c Line:36 🍎 assets2AudioData background:#3f7cff []
+POST /api/cornerScape/getAllAssets 200 9.287 ms - 11890
+[2026-08-23 16:42:06.408] [LOG] %c Line:36 🍎 assets2AudioData background:#3f7cff []
+POST /api/cornerScape/getAllAssets 200 10.452 ms - 11890
+[2026-08-23 16:42:07.413] [LOG] %c Line:36 🍎 assets2AudioData background:#3f7cff []
+POST /api/cornerScape/getAllAssets 200 9.518 ms - 11890
+[2026-08-23 16:42:09.298] [LOG] %c Line:36 🍎 assets2AudioData background:#3f7cff []
+POST /api/cornerScape/getAllAssets 200 9.449 ms - 11890
+[2026-08-23 16:42:17.807] [LOG] %c Line:36 🍎 assets2AudioData background:#3f7cff []
+POST /api/cornerScape/getAllAssets 200 8.627 ms - 11890
+[2026-08-23 16:42:18.652] [LOG] %c Line:36 🍎 assets2AudioData background:#3f7cff []
+POST /api/cornerScape/getAllAssets 200 9.024 ms - 11890
+POST /api/assetsGenerate/batchPolishAssetsPrompt 200 16.351 ms - 51
+POST /api/assets/pollingPromptAssets 200 2.179 ms - 7362
+[2026-08-23 16:42:32.955] [LOG] %c Line:36 🍎 assets2AudioData background:#3f7cff []
+POST /api/cornerScape/getAllAssets 200 10.100 ms - 12365

@@ -14,7 +14,7 @@
   },
   "57:30": {
     "inputs": {
-      "clip_name": "qwen_3_4b.safetensors",
+      "clip_name": "qwen_3_4b_fp8_mixed.safetensors",
       "type": "lumina2",
       "device": "cpu"
     },
@@ -62,7 +62,7 @@
   },
   "57:28": {
     "inputs": {
-      "unet_name": "z_image_turbo_bf16.safetensors",
+      "unet_name": "z_image_turbo_int8_convrot.safetensors",
       "weight_dtype": "default"
     },
     "class_type": "UNETLoader",
